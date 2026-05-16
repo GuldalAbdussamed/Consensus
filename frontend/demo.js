@@ -1,37 +1,46 @@
 let selectedFile = null;
 let processedBlob = null;
 let isProcessing = false;
+let visualizerInterval = null;
 
-const videoInput = document.getElementById('video-input');
-const videoPlaceholder = document.getElementById('video-placeholder');
-const videoPlayer = document.getElementById('video-player');
-const uploadProgressContainer = document.getElementById('upload-progress-container');
-const uploadProgress = document.getElementById('upload-progress');
-const uploadPercent = document.getElementById('upload-percent');
-const uploadBtn = document.getElementById('upload-btn');
-const processBtn = document.getElementById('process-btn');
-const downloadBtn = document.getElementById('download-btn');
-const statusMessage = document.getElementById('status-message');
-const backendStatus = document.getElementById('backend-status');
-const videoIcon = document.getElementById('video-icon');
-const videoStatusText = document.getElementById('video-status-text');
+// UI Elements
+const elements = {
+    videoInput: document.getElementById('video-input'),
+    videoPlaceholder: document.getElementById('video-placeholder'),
+    videoPlayer: document.getElementById('video-player'),
+    videoStatusText: document.getElementById('video-status-text'),
+    processingOverlay: document.getElementById('processing-overlay'),
+    uploadProgressContainer: document.getElementById('upload-progress-container'),
+    uploadProgress: document.getElementById('upload-progress'),
+    uploadPercent: document.getElementById('upload-percent'),
+    uploadBtn: document.getElementById('upload-btn'),
+    processBtn: document.getElementById('process-btn'),
+    downloadBtn: document.getElementById('download-btn'),
+    statusMessage: document.getElementById('status-message'),
+    backendStatus: document.getElementById('backend-status'),
+    descFeed: document.getElementById('desc-feed'),
+    descCount: document.getElementById('desc-count'),
+    waveform: document.getElementById('waveform'),
+    vadLabel: document.getElementById('vad-label')
+};
 
-videoPlaceholder.addEventListener('click', () => videoInput.click());
-videoPlaceholder.addEventListener('dragover', (e) => {
+// Event Listeners
+elements.videoPlaceholder.addEventListener('click', () => elements.videoInput.click());
+elements.videoPlaceholder.addEventListener('dragover', (e) => {
     e.preventDefault();
-    videoPlaceholder.classList.add('dragover');
+    elements.videoPlaceholder.classList.add('dragover');
 });
-videoPlaceholder.addEventListener('dragleave', () => {
-    videoPlaceholder.classList.remove('dragover');
+elements.videoPlaceholder.addEventListener('dragleave', () => {
+    elements.videoPlaceholder.classList.remove('dragover');
 });
-videoPlaceholder.addEventListener('drop', (e) => {
+elements.videoPlaceholder.addEventListener('drop', (e) => {
     e.preventDefault();
-    videoPlaceholder.classList.remove('dragover');
+    elements.videoPlaceholder.classList.remove('dragover');
     const files = e.dataTransfer.files;
     if (files.length > 0) handleFileSelect(files[0]);
 });
 
-videoInput.addEventListener('change', (e) => {
+elements.videoInput.addEventListener('change', (e) => {
     if (e.target.files.length > 0) handleFileSelect(e.target.files[0]);
 });
 
@@ -39,93 +48,89 @@ function handleFileSelect(file) {
     const allowed = ['.mp4', '.mkv', '.avi', '.mov', '.webm'];
     const ext = '.' + file.name.split('.').pop().toLowerCase();
     if (!allowed.includes(ext)) {
-        showStatus('Desteklenmeyen format! İzin verilenler: ' + allowed.join(', '), 'error');
+        showStatus('Desteklenmeyen format!', 'error');
         return;
     }
     
     selectedFile = file;
     processedBlob = null;
-    downloadBtn.disabled = true;
+    elements.downloadBtn.disabled = true;
     
     const url = URL.createObjectURL(file);
-    videoPlayer.src = url;
-    videoPlayer.classList.remove('hidden');
-    videoPlaceholder.classList.add('hidden');
+    elements.videoPlayer.src = url;
+    elements.videoPlayer.classList.remove('hidden');
+    elements.videoPlaceholder.classList.add('hidden');
     
-    processBtn.disabled = false;
-    showStatus(`Seçildi: ${file.name} (${formatSize(file.size)})`, 'success');
+    elements.processBtn.disabled = false;
+    showStatus(`Dosya seçildi: ${file.name}`, 'success');
+    document.getElementById('video-panel-status').textContent = 'Video Hazır';
 }
 
 function triggerUpload() {
-    videoInput.click();
-}
-
-function formatSize(bytes) {
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    elements.videoInput.click();
 }
 
 async function processVideo() {
     if (!selectedFile || isProcessing) return;
     
     isProcessing = true;
-    processBtn.disabled = true;
-    uploadBtn.disabled = true;
-    
-    uploadProgressContainer.classList.remove('hidden');
-    videoPlayer.classList.add('hidden');
-    videoPlaceholder.classList.remove('hidden');
-    videoIcon.textContent = '⏳';
-    videoStatusText.textContent = 'Video İşleniyor...';
-    document.querySelector('.upload-hint')?.remove();
+    updateUIForProcessing(true);
+    startVisualizerAnimation();
     
     setStep('vad', 'active');
     showStatus('Video yükleniyor...', 'info');
     
     try {
         const result = await uploadVideo(selectedFile, (percent) => {
-            uploadProgress.style.width = percent + '%';
-            uploadPercent.textContent = percent + '%';
+            elements.uploadProgress.style.width = percent + '%';
+            elements.uploadPercent.textContent = percent + '%';
             if (percent === 100) {
-                document.querySelector('.progress-label').textContent = 'İşleniyor...';
+                showStatus('Yapay Zeka analizi başladı...', 'info');
+                document.querySelector('.progress-label').textContent = 'Analiz Ediliyor...';
+                setStep('vad', 'done');
+                setStep('vlm', 'active');
             }
         });
         
         processedBlob = result.blob;
-        downloadBtn.disabled = false;
+        elements.downloadBtn.disabled = false;
         
         const procTime = result.procTime || '?';
-        showStatus(`İşlem tamamlandı! (${procTime})`, 'success');
+        showStatus(`İşlem başarıyla tamamlandı!`, 'success');
         
-        setStep('vad', 'done');
         setStep('vlm', 'done');
         setStep('tts', 'done');
         setStep('mixer', 'done');
         
-        videoIcon.textContent = '✅';
-        videoStatusText.textContent = 'İşlem Tamamlandı - İndirmek için tıklayın';
-        videoPlaceholder.onclick = downloadResult;
-        
-        addDescription(`Video başarıyla işlendi. İşlem süresi: ${procTime}`, new Date().toLocaleTimeString('tr-TR'));
+        addDescription(`Video analizi tamamlandı. Toplam süre: ${procTime}`, new Date().toLocaleTimeString('tr-TR'), 'SİSTEM');
         
         const url = URL.createObjectURL(result.blob);
-        videoPlayer.src = url;
-        videoPlayer.classList.remove('hidden');
-        videoPlaceholder.classList.add('hidden');
+        elements.videoPlayer.src = url;
+        elements.videoPlayer.classList.remove('hidden');
+        elements.processingOverlay.classList.add('hidden');
         
     } catch (error) {
         showStatus('Hata: ' + error.message, 'error');
         resetAllSteps();
-        videoIcon.textContent = '❌';
-        videoStatusText.textContent = 'Hata Oluştu';
     } finally {
         isProcessing = false;
-        uploadProgressContainer.classList.add('hidden');
-        uploadProgress.style.width = '0%';
-        uploadPercent.textContent = '0%';
-        processBtn.disabled = false;
-        uploadBtn.disabled = false;
+        updateUIForProcessing(false);
+        stopVisualizerAnimation();
+    }
+}
+
+function updateUIForProcessing(active) {
+    elements.processBtn.disabled = active;
+    elements.uploadBtn.disabled = active;
+    
+    if (active) {
+        elements.uploadProgressContainer.classList.add('active');
+        elements.processingOverlay.classList.remove('hidden');
+        document.getElementById('video-panel-status').textContent = 'İşleniyor';
+    } else {
+        elements.uploadProgressContainer.classList.remove('active');
+        elements.processingOverlay.classList.add('hidden');
+        document.getElementById('video-panel-status').textContent = processedBlob ? 'Tamamlandı' : 'Hazır';
     }
 }
 
@@ -133,7 +138,7 @@ function downloadResult() {
     if (!processedBlob) return;
     const filename = selectedFile ? `engelsiz_${selectedFile.name}` : 'engelsiz_video.mp4';
     downloadBlob(processedBlob, filename);
-    showStatus('Video indirildi!', 'success');
+    showStatus('Video indiriliyor...', 'success');
 }
 
 function resetAll() {
@@ -141,59 +146,70 @@ function resetAll() {
     processedBlob = null;
     isProcessing = false;
     
-    videoPlayer.src = '';
-    videoPlayer.classList.add('hidden');
-    videoPlaceholder.classList.remove('hidden');
-    videoIcon.textContent = '📺';
-    videoStatusText.textContent = 'Video Yüklemek İçin Tıklayın';
-    videoPlaceholder.onclick = () => videoInput.click();
+    elements.videoPlayer.src = '';
+    elements.videoPlayer.classList.add('hidden');
+    elements.videoPlaceholder.classList.remove('hidden');
+    elements.processingOverlay.classList.add('hidden');
+    elements.uploadProgressContainer.classList.remove('active');
     
-    const hint = document.createElement('div');
-    hint.className = 'upload-hint';
-    hint.textContent = 'veya sürükle bırak';
-    videoPlaceholder.querySelector('.video-content').appendChild(hint);
-    
-    uploadProgressContainer.classList.add('hidden');
-    processBtn.disabled = true;
-    downloadBtn.disabled = true;
+    elements.processBtn.disabled = true;
+    elements.downloadBtn.disabled = true;
     
     resetAllSteps();
-    setMixer(100, 0, '0 dB', '— dB');
+    setMixer(100, 0, '0dB', '-∞');
     
-    const feed = document.getElementById('desc-feed');
-    if (feed) feed.innerHTML = '<div class="desc-empty"><div class="empty-icon">🔊</div><p>Yayın başladığında betimleme akışı burada görünecek...</p></div>';
-    document.getElementById('desc-count').textContent = '0 betimleme';
+    elements.descFeed.innerHTML = `
+        <div class="feed-empty">
+            <div class="empty-glow"></div>
+            <div class="empty-text">Analiz başladığında betimlemeler burada görünecek</div>
+        </div>
+    `;
+    elements.descCount.textContent = '0';
+    document.getElementById('video-panel-status').textContent = 'Hazır';
     
-    showStatus('Sıfırlandı', 'info');
+    showStatus('Sistem sıfırlandı', 'info');
 }
 
 function setStep(stepId, state) {
+    const item = document.getElementById('step-' + stepId);
     const badge = document.getElementById('badge-' + stepId);
-    const dot = document.querySelector('#step-' + stepId + ' .pipe-dot');
-    if (!badge || !dot) return;
-    badge.className = 'pipe-badge ' + (state === 'active' ? 'badge-active' : state === 'done' ? 'badge-done' : 'badge-idle');
+    if (!item || !badge) return;
+    
+    item.className = 'flow-item ' + state;
+    badge.className = 'flow-badge ' + (state === 'active' ? 'badge-active' : state === 'done' ? 'badge-done' : 'badge-idle');
     badge.textContent = state === 'active' ? 'Çalışıyor' : state === 'done' ? 'Tamamlandı' : 'Bekliyor';
-    dot.className = 'pipe-dot ' + (state === 'active' ? 'active' : state === 'done' ? 'done' : '');
+    
+    if (state === 'active') {
+        item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
 }
 
 function resetAllSteps() {
     ['vad', 'vlm', 'tts', 'mixer'].forEach(s => setStep(s, 'idle'));
 }
 
-function addDescription(text, timeStr) {
-    const feed = document.getElementById('desc-feed');
-    if (!feed) return;
-    const empty = feed.querySelector('.desc-empty');
+function addDescription(text, timeStr, tag = 'BETİMLEME') {
+    const empty = elements.descFeed.querySelector('.feed-empty');
     if (empty) empty.remove();
 
     const item = document.createElement('div');
-    item.className = 'desc-item';
-    item.innerHTML = `<div class="desc-item-time">⏱ ${timeStr}</div><div class="desc-item-text">${text}</div>`;
-    feed.prepend(item);
+    item.className = 'feed-item';
+    item.innerHTML = `
+        <div class="item-header">
+            <span class="item-time">${timeStr}</span>
+            <span class="item-tag">${tag}</span>
+        </div>
+        <div class="item-text">${text}</div>
+    `;
+    elements.descFeed.prepend(item);
     
-    const countEl = document.getElementById('desc-count');
-    const count = feed.querySelectorAll('.desc-item').length;
-    if (countEl) countEl.textContent = count + ' betimleme';
+    const count = elements.descFeed.querySelectorAll('.feed-item').length;
+    elements.descCount.textContent = count;
+
+    // Simulate mixer activity
+    if (tag === 'BETİMLEME') {
+        simulateMixerActivity();
+    }
 }
 
 function setMixer(originalPct, descPct, originalDb, descDb) {
@@ -207,33 +223,63 @@ function setMixer(originalPct, descPct, originalDb, descDb) {
     if (ddb) ddb.textContent = descDb;
 }
 
+function simulateMixerActivity() {
+    setMixer(40, 90, '-6dB', '0dB');
+    setTimeout(() => {
+        setMixer(100, 0, '0dB', '-∞');
+    }, 4000);
+}
+
+function startVisualizerAnimation() {
+    elements.vadLabel.classList.add('active');
+    elements.vadLabel.textContent = 'VAD: AKTİF';
+    
+    visualizerInterval = setInterval(() => {
+        const bars = elements.waveform.querySelectorAll('.viz-bar');
+        bars.forEach(bar => {
+            const h = Math.random() * 80 + 20;
+            bar.style.height = h + '%';
+            bar.classList.add('active');
+        });
+    }, 150);
+}
+
+function stopVisualizerAnimation() {
+    clearInterval(visualizerInterval);
+    elements.vadLabel.classList.remove('active');
+    elements.vadLabel.textContent = 'VAD: PASİF';
+    const bars = elements.waveform.querySelectorAll('.viz-bar');
+    bars.forEach(bar => {
+        bar.style.height = '20%';
+        bar.classList.remove('active');
+    });
+}
+
 function showStatus(message, type) {
-    statusMessage.textContent = message;
-    statusMessage.className = 'ctrl-info ' + (type || '');
+    elements.statusMessage.textContent = message;
+    elements.statusMessage.className = 'status-msg ' + (type || '');
 }
 
 async function checkBackendStatus() {
     try {
         const health = await checkHealth();
-        const statusDot = backendStatus.querySelector('.status-dot');
-        const statusText = backendStatus.querySelector('.status-text');
-        
         if (health && health.status === 'ok') {
-            statusDot.classList.remove('disconnected');
-            statusDot.classList.add('connected');
-            statusText.textContent = 'Backend: Bağlı';
-            showStatus('Backend bağlantısı hazır', 'success');
+            document.getElementById('backend-status').innerHTML = `
+                <span class="status-dot connected"></span>
+                <span class="status-text">Backend: Bağlı</span>
+            `;
         } else {
-            statusDot.classList.remove('connected');
-            statusDot.classList.add('disconnected');
-            statusText.textContent = 'Backend: Bağlantı Yok';
-            showStatus('Backend erişilemiyor. Sunucuyu başlatın: python api_server.py', 'error');
+             document.getElementById('backend-status').innerHTML = `
+                <span class="status-dot disconnected"></span>
+                <span class="status-text">Backend: Bağlantı Yok</span>
+            `;
         }
     } catch (err) {
         console.error('Backend durum kontrolü hatası:', err);
     }
 }
 
-setMixer(100, 0, '0 dB', '— dB');
+// Initial Setup
+resetAllSteps();
 checkBackendStatus();
 setInterval(checkBackendStatus, 30000);
