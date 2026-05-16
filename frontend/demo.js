@@ -213,18 +213,24 @@ function showStatus(message, type) {
 }
 
 async function checkBackendStatus() {
-    const health = await checkHealth();
-    const statusDot = backendStatus.querySelector('.status-dot');
-    const statusText = backendStatus.querySelector('.status-text');
-    
-    if (health && health.status === 'ok') {
-        statusDot.classList.add('connected');
-        statusText.textContent = 'Backend: Bağlı';
-        showStatus('Backend bağlantısı hazır', 'success');
-    } else {
-        statusDot.classList.add('disconnected');
-        statusText.textContent = 'Backend: Bağlantı Yok';
-        showStatus('Backend erişilemiyor. Sunucuyu başlatın: python api_server.py', 'error');
+    try {
+        const health = await checkHealth();
+        const statusDot = backendStatus.querySelector('.status-dot');
+        const statusText = backendStatus.querySelector('.status-text');
+        
+        if (health && health.status === 'ok') {
+            statusDot.classList.remove('disconnected');
+            statusDot.classList.add('connected');
+            statusText.textContent = 'Backend: Bağlı';
+            showStatus('Backend bağlantısı hazır', 'success');
+        } else {
+            statusDot.classList.remove('connected');
+            statusDot.classList.add('disconnected');
+            statusText.textContent = 'Backend: Bağlantı Yok';
+            showStatus('Backend erişilemiyor. Sunucuyu başlatın: python api_server.py', 'error');
+        }
+    } catch (err) {
+        console.error('Backend durum kontrolü hatası:', err);
     }
 }
 

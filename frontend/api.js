@@ -1,8 +1,18 @@
-const BASE = `http://${window.location.hostname}:8000`; 
+// Eğer frontend zaten backend (8000) üzerinden servis ediliyorsa relative path kullan, 
+// yoksa (dev server vb.) hostname:8000'e git.
+const BASE = (window.location.port === '8000' || window.location.hostname.includes('8000-'))
+    ? window.location.origin 
+    : `http://${window.location.hostname}:8000`;
 
 async function checkHealth() {
     try {
-        const response = await fetch(`${BASE}/health`);
+        // 5 saniye timeout ekleyelim ki sonsuza kadar asılı kalmasın
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+        const response = await fetch(`${BASE}/health`, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        
         if (!response.ok) throw new Error('Backend yanıt vermedi');
         return await response.json();
     } catch (error) {
