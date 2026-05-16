@@ -95,23 +95,20 @@ async def _real_tts(client: httpx.AsyncClient, text: str) -> tuple[np.ndarray, i
 # ============================================================
 
 async def _probe_real_tts(client: httpx.AsyncClient) -> bool:
-    """TTS sunucusu açık mı? Health check veya kısa sentez denemesi."""
+    """TTS sunucusu açık mı? Sadece /health probe ediyoruz.
+
+    Synth fallback KALDIRILDI: XTTS-v2 ilk inference warmup'ı 3-5sn,
+    kısa timeout false-negative üretiyordu → mock'a düşüyordu.
+    """
     try:
-        # Önce /health varsa onu dene
-        try:
-            r = await client.get(f"{config.TTS_URL}/health", timeout=2.0)
-            if r.status_code == 200:
-                return True
-        except Exception:
-            pass
-        # Yoksa kısa sentez dene
-        r = await client.post(
-            f"{config.TTS_URL}/synthesize",
-            json={"text": "test", "language": config.TTS_LANGUAGE},
-            timeout=3.0,
-        )
-        return r.status_code == 200
-    except Exception:
+        r = await client.get(f"{config.TTS_URL}/health", timeout=5.0)
+        if r.status_code == 200:
+            log.info("TTS /health OK: %s", r.text[:100])
+            return True
+        log.warning("TTS /health beklenmeyen kod: %d", r.status_code)
+        return False
+    except Exception as e:
+        log.warning("TTS /health hata: %s: %s", type(e).__name__, e)
         return False
 
 

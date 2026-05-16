@@ -44,9 +44,12 @@ class SynthRequest(BaseModel):
     speaker_wav: str | None = None  # ileride ses klonlama için
 
 
+DEFAULT_SPEAKER = None  # startup'ta doldurulur
+
+
 @app.on_event("startup")
 def load_model():
-    global tts_model, DEVICE
+    global tts_model, DEVICE, DEFAULT_SPEAKER
     log.info("XTTS-v2 modeli yükleniyor...")
     t0 = time.time()
 
@@ -54,6 +57,14 @@ def load_model():
 
     DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
     tts_model = TTS("tts_models/multilingual/multi-dataset/xtts_v2").to(DEVICE)
+
+    # Multi-speaker model — mevcut speaker'ları listele, ilkini default yap
+    if hasattr(tts_model, "speakers") and tts_model.speakers:
+        DEFAULT_SPEAKER = tts_model.speakers[0]
+        log.info("Mevcut speaker'lar: %s", tts_model.speakers[:5])
+        log.info("Default speaker: %s", DEFAULT_SPEAKER)
+    else:
+        log.warning("Speaker listesi bulunamadı!")
 
     elapsed = time.time() - t0
     log.info("Model yüklendi (%.1fs), device=%s", elapsed, DEVICE)
@@ -87,6 +98,8 @@ async def synthesize(req: SynthRequest):
     }
     if req.speaker_wav:
         kwargs["speaker_wav"] = req.speaker_wav
+    elif DEFAULT_SPEAKER:
+        kwargs["speaker"] = DEFAULT_SPEAKER
 
     wav = tts_model.tts(**kwargs)
 
