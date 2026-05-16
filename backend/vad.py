@@ -269,6 +269,7 @@ async def run(
     scene_gallery: SceneGallery,
     context_ref: ContextRef,
     stop_event: asyncio.Event,
+    realtime: bool = True,
 ):
     """VAD worker — audio lookahead'i tüketir, boşlukları gap_queue'ya basar."""
     log.info("VAD worker başlıyor (lookahead=%.1fs)", config.AUDIO_LOOKAHEAD_SEC)
@@ -283,6 +284,9 @@ async def run(
     audio_done = False
     frame_done = False
     last_vad_at = 0.0
+    chunks_since_vad = 0
+    # Batch modda chunk sayacıyla VAD tetikle (0.5s = 5 chunk @ 100ms)
+    vad_chunk_interval = max(1, int(config.VAD_INTERVAL_SEC / (config.AUDIO_CHUNK_MS / 1000.0)))
     loop = asyncio.get_running_loop()
 
     # İlk betimleme bayrağı — galeri boş olduğu sürece is_first=True
@@ -295,6 +299,7 @@ async def run(
                 log.info("Audio lookahead bitti")
             else:
                 await audio_buf.append(audio_item)
+                chunks_since_vad += 1
         except asyncio.TimeoutError:
             pass
 
@@ -312,8 +317,18 @@ async def run(
 
         # === Periyodik VAD ===
         now = time.time()
-        if now - last_vad_at >= config.VAD_INTERVAL_SEC:
+        should_run_vad = False
+        if realtime:
+            if now - last_vad_at >= config.VAD_INTERVAL_SEC:
+                should_run_vad = True
+        else:
+            # Batch mod: chunk sayacına göre tetikle
+            if chunks_since_vad >= vad_chunk_interval:
+                should_run_vad = True
+
+        if should_run_vad:
             last_vad_at = now
+            chunks_since_vad = 0
             audio_arr, win_start, win_end = await audio_buf.snapshot()
             if len(audio_arr) >= config.AUDIO_SAMPLE_RATE * 1.0:
                 # En az 1sn audio biriktiyse VAD çalıştır
@@ -343,10 +358,11 @@ async def run(
                         (gs, ge) for gs, ge in all_gaps if (gs + ge) / 2 <= safe_cutoff
                     ]
 
-                    # Daha önce emit edilmiş mi?
+                    # Daha önce emit edilmiş mi? (overlap tabanlı — %50 kesişim)
                     for gs, ge in candidate_gaps:
+                        gap_dur = ge - gs
                         already = any(
-                            abs(gs - eg[0]) < 0.3 and abs(ge - eg[1]) < 0.3
+                            max(0, min(ge, eg[1]) - max(gs, eg[0])) > gap_dur * 0.5
                             for eg in emitted_gaps
                         )
                         if already:
@@ -419,7 +435,75 @@ async def run(
 
         # === Çıkış koşulu ===
         if audio_done and frame_done:
-            log.info("VAD worker: tüm kaynaklar bitti, çıkıyor")
+            # Son bir VAD pass yap — kalan audio'daki boşlukları yakala
+            log.info("VAD worker: tüm kaynaklar bitti, son VAD pass yapılıyor")
+            audio_arr, win_start, win_end = await audio_buf.snapshot()
+            if len(audio_arr) >= config.AUDIO_SAMPLE_RATE * 1.0:
+                try:
+                    speech = await loop.run_in_executor(
+                        None, _detect_speech_segments, audio_arr, config.AUDIO_SAMPLE_RATE,
+                    )
+                    speech_abs = [(s + win_start, e + win_start) for s, e in speech]
+                    raw_gaps = _gaps_from_speech(speech_abs, win_start, win_end,
+                                                  config.MIN_GAP_SEC)
+                    all_gaps = []
+                    for gs, ge in raw_gaps:
+                        all_gaps.extend(_split_long_gap(gs, ge, config.MAX_GAP_CHUNK_SEC))
+
+                    # Son pass'ta safe_cutoff uygulamıyoruz — tüm boşluklar geçerli
+                    for gs, ge in all_gaps:
+                        already = any(
+                            abs(gs - eg[0]) < 0.3 and abs(ge - eg[1]) < 0.3
+                            for eg in emitted_gaps
+                        )
+                        if already:
+                            continue
+
+                        center = (gs + ge) / 2
+                        available = ge - gs
+
+                        frames = await frame_hist.get_window(center, config.FRAME_WINDOW_OFFSETS)
+                        if not frames:
+                            continue
+
+                        keyframe = frames[len(frames) // 2]
+                        matched_idx, dist, known_text = await scene_gallery.match(keyframe)
+                        if matched_idx is not None:
+                            log.info("Bilinen sahne #%d (Δ=%.2f) @ %.2fs → SUS: '%s'",
+                                     matched_idx, dist, center, known_text[:40])
+                            emitted_gaps.append((gs, ge))
+                            await context_ref.append(known_text)
+                            continue
+
+                        ctx_snapshot = await context_ref.snapshot()
+                        is_first = (await scene_gallery.size()) == 0
+
+                        gap_item = GapItem(
+                            video_time_start=gs,
+                            video_time_end=ge,
+                            video_time_center=center,
+                            available_seconds=available,
+                            frames=frames,
+                            is_first=is_first,
+                            context=ctx_snapshot,
+                            wall_time=time.time(),
+                        )
+
+                        if gap_queue.full():
+                            try:
+                                dropped = gap_queue.get_nowait()
+                                log.warning("Gap queue full, eski GapItem atıldı: t=%.2f",
+                                            getattr(dropped, "video_time_center", 0))
+                            except asyncio.QueueEmpty:
+                                pass
+
+                        await gap_queue.put(gap_item)
+                        emitted_gaps.append((gs, ge))
+                        log.info("Boşluk → VLM (son pass): [%.2f-%.2f] (%.1fs), Δ_min=%.2f, first=%s",
+                                 gs, ge, available, dist, is_first)
+
+                except Exception as e:
+                    log.error("VAD son pass hata: %s", e)
             break
 
     await gap_queue.put(StreamEnded(reason="vad_eof"))

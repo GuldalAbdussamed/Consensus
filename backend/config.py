@@ -106,7 +106,7 @@ JACCARD_REPEAT_THRESHOLD = 0.6
 # TTS (XTTS-v2) parametreleri
 # ============================================================
 
-TTS_TIMEOUT_SEC = 10.0
+TTS_TIMEOUT_SEC = 30.0
 TTS_SAMPLE_RATE = 24000  # XTTS-v2 default
 
 # ============================================================
@@ -114,10 +114,16 @@ TTS_SAMPLE_RATE = 24000  # XTTS-v2 default
 # ============================================================
 
 # Orijinal sesi TTS sırasında kaç dB alçaltalım
-DUCKING_DB = -12.0
+# -12 çok agresif (1/4'e düşürür), -8 dB daha doğal: orijinal ~%40
+DUCKING_DB = -8.0
 
 # Ducking giriş/çıkışta crossfade (ms)
 DUCKING_FADE_MS = 150
+
+# TTS ses seviyesi (dB). 0 = olduğu gibi, negatif = kıs.
+# XTTS çıkışı normalize edilmiş ve yüksek peak'li, orijinalden gür çıkıyor.
+# -3 dB ile dengeye yakınlaştır.
+TTS_GAIN_DB = -3.0
 
 # Mixer hangi sample rate ile çalışsın?
 # Orijinal video sesi muhtemelen 44.1k/48k, TTS 24k.

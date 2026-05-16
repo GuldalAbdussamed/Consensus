@@ -127,6 +127,7 @@ async def _audio_publisher(
     buffer_done: asyncio.Event,
     out_queue: asyncio.Queue,
     stop_event: asyncio.Event,
+    realtime: bool = True,
 ):
     """Audio buffer'dan, hedef video_time'a ulaşmış chunk'ları sırayla out_queue'ya bas.
 
@@ -165,7 +166,7 @@ async def _audio_publisher(
         # Chunk'ın hedef zamanı geldi mi?
         # Chunk video_time_end'i target'tan küçük/eşitse "geçmişte kaldı, hemen yayımla"
         # Değilse target'a kadar bekle
-        if chunk.video_time_end <= target_video_time:
+        if chunk.video_time_end <= target_video_time or not realtime:
             await out_queue.put(chunk)
             cursor_idx += 1
         else:
@@ -184,6 +185,7 @@ async def _frame_publisher(
     start_wall: float,
     frame_queue: asyncio.Queue,
     stop_event: asyncio.Event,
+    realtime: bool = True,
 ):
     """Video frame'lerini wall-clock'a göre release et.
 
@@ -220,7 +222,7 @@ async def _frame_publisher(
             # Wall-clock'a senkronize et
             elapsed = time.time() - start_wall
             ahead = video_time - elapsed
-            if ahead > 0.005:
+            if realtime and ahead > 0.005:
                 await asyncio.sleep(ahead)
 
             # Queue full ise eskiyi at (canlı sistem, geride kalmış frame değersiz)
@@ -251,6 +253,7 @@ async def play(
     audio_q_lookahead: asyncio.Queue,
     audio_q_realtime: asyncio.Queue,
     stop_event: asyncio.Event,
+    realtime: bool = True,
 ) -> list[asyncio.Task]:
     """Video kaynağını başlat. 3 task döner — gather için.
 
@@ -275,15 +278,16 @@ async def play(
         asyncio.create_task(_audio_publisher(
             "lookahead", config.AUDIO_LOOKAHEAD_SEC, start_wall,
             audio_buffer, audio_buffer_lock, buffer_done,
-            audio_q_lookahead, stop_event,
+            audio_q_lookahead, stop_event, realtime=realtime,
         ), name="audio_lookahead"),
         asyncio.create_task(_audio_publisher(
             "realtime", 0.0, start_wall,
             audio_buffer, audio_buffer_lock, buffer_done,
-            audio_q_realtime, stop_event,
+            audio_q_realtime, stop_event, realtime=realtime,
         ), name="audio_realtime"),
         asyncio.create_task(_frame_publisher(
             str(vid_path), start_wall, frame_queue, stop_event,
+            realtime=realtime,
         ), name="frame_publisher"),
     ]
     return tasks

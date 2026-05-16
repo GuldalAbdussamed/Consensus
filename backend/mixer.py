@@ -58,12 +58,23 @@ def _resample(pcm: np.ndarray, src_sr: int, dst_sr: int) -> np.ndarray:
 class OutputSink:
     """Sounddevice OutputStream wrapper. Cihaz yoksa WAV'a yazar."""
 
-    def __init__(self, sample_rate: int, fallback_wav: Optional[str] = None):
+    def __init__(self, sample_rate: int, fallback_wav: Optional[str] = None,
+                 force_wav: bool = False):
         self.sample_rate = sample_rate
         self._stream = None
         self._wav_writer = None
         self._wav_path = fallback_wav
         self._use_sd = False
+
+        if force_wav and fallback_wav:
+            # Batch mod — direkt WAV'a yaz, sounddevice açma
+            Path(fallback_wav).parent.mkdir(parents=True, exist_ok=True)
+            self._wav_writer = wave.open(fallback_wav, "wb")
+            self._wav_writer.setnchannels(1)
+            self._wav_writer.setsampwidth(2)
+            self._wav_writer.setframerate(sample_rate)
+            log.info("Output: WAV dosyası (%.0fHz) → %s", sample_rate, fallback_wav)
+            return
 
         try:
             import sounddevice as sd  # type: ignore
@@ -172,10 +183,12 @@ async def run(
     tts_audio_queue: asyncio.Queue,
     stop_event: asyncio.Event,
     fallback_wav: Optional[str] = None,
+    realtime: bool = True,
 ):
     log.info("Mixer başlıyor (sr=%dHz)", config.MIXER_SAMPLE_RATE)
 
-    sink = OutputSink(config.MIXER_SAMPLE_RATE, fallback_wav)
+    sink = OutputSink(config.MIXER_SAMPLE_RATE, fallback_wav,
+                       force_wav=not realtime)
     envelope = DuckingEnvelope(
         config.MIXER_SAMPLE_RATE,
         config.DUCKING_DB,

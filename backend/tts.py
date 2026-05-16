@@ -95,21 +95,28 @@ async def _real_tts(client: httpx.AsyncClient, text: str) -> tuple[np.ndarray, i
 # ============================================================
 
 async def _probe_real_tts(client: httpx.AsyncClient) -> bool:
-    """TTS sunucusu açık mı? Sadece /health probe ediyoruz.
+    """TTS sunucusu açık mı? Model yüklenene kadar tekrar dene.
 
-    Synth fallback KALDIRILDI: XTTS-v2 ilk inference warmup'ı 3-5sn,
-    kısa timeout false-negative üretiyordu → mock'a düşüyordu.
+    XTTS-v2 model yüklenmesi 30-60sn sürebilir. Bu sürede sunucu
+    TCP bağlantısı kabul eder ama HTTP yanıt veremez (ReadTimeout).
+    12 deneme × 5sn = ~60sn bekle.
     """
-    try:
-        r = await client.get(f"{config.TTS_URL}/health", timeout=5.0)
-        if r.status_code == 200:
-            log.info("TTS /health OK: %s", r.text[:100])
-            return True
-        log.warning("TTS /health beklenmeyen kod: %d", r.status_code)
-        return False
-    except Exception as e:
-        log.warning("TTS /health hata: %s: %s", type(e).__name__, e)
-        return False
+    max_retries = 12
+    for attempt in range(1, max_retries + 1):
+        try:
+            r = await client.get(f"{config.TTS_URL}/health", timeout=5.0)
+            if r.status_code == 200:
+                log.info("TTS /health OK (deneme %d): %s", attempt, r.text[:100])
+                return True
+            log.warning("TTS /health beklenmeyen kod: %d (deneme %d)", r.status_code, attempt)
+        except Exception as e:
+            log.info("TTS /health bekleniyor (%d/%d): %s", attempt, max_retries, type(e).__name__)
+
+        if attempt < max_retries:
+            await asyncio.sleep(5)
+
+    log.warning("TTS sunucusu %d denemede yanıt vermedi, MOCK moduna düşülüyor", max_retries)
+    return False
 
 
 # ============================================================
@@ -128,7 +135,27 @@ async def run(
         if force_mock:
             use_real = False
         else:
+            t_probe = time.time()
             use_real = await _probe_real_tts(client)
+            probe_dur = time.time() - t_probe
+            log.info("TTS probe %.1fs sürdü", probe_dur)
+
+            # Probe beklerken kuyrukta biriken stale description'ları temizle
+            if probe_dur > 2.0:
+                flushed = 0
+                while True:
+                    try:
+                        stale = desc_queue.get_nowait()
+                        if isinstance(stale, StreamEnded):
+                            # Sentinel'ı geri koyma — pipeline bitiyor
+                            await desc_queue.put(stale)
+                            break
+                        flushed += 1
+                    except asyncio.QueueEmpty:
+                        break
+                if flushed:
+                    log.info("Probe sırasında biriken %d stale desc temizlendi", flushed)
+
         log.info("TTS modu: %s", "GERÇEK (XTTS-v2)" if use_real else "MOCK (sinüs)")
 
         loop = asyncio.get_running_loop()

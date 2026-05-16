@@ -16,3 +16,9 @@ soundfile>=0.12
 
 # Ses çıkışı (sounddevice opsiyonel - yoksa WAV fallback)
 sounddevice>=0.4
+
+# API sunucusu
+fastapi>=0.100
+uvicorn>=0.25
+python-multipart>=0.0.6
+
