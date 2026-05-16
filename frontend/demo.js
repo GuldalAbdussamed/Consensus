@@ -1,58 +1,173 @@
-// ===================== DEMO PAGE SIMULATION =====================
+let selectedFile = null;
+let processedBlob = null;
+let isProcessing = false;
 
-let simRunning = false;
-let simTimer = null;
-let elapsedSec = 0;
-const totalSec = 60;
-let descCount = 0;
+const videoInput = document.getElementById('video-input');
+const videoPlaceholder = document.getElementById('video-placeholder');
+const videoPlayer = document.getElementById('video-player');
+const uploadProgressContainer = document.getElementById('upload-progress-container');
+const uploadProgress = document.getElementById('upload-progress');
+const uploadPercent = document.getElementById('upload-percent');
+const uploadBtn = document.getElementById('upload-btn');
+const processBtn = document.getElementById('process-btn');
+const downloadBtn = document.getElementById('download-btn');
+const statusMessage = document.getElementById('status-message');
+const backendStatus = document.getElementById('backend-status');
+const videoIcon = document.getElementById('video-icon');
+const videoStatusText = document.getElementById('video-status-text');
 
-// Simüle edilmiş betimleme verileri (timestamp → metin)
-const simulationEvents = [
-    { time: 5,  vadState: 'Sessizlik', step: 'vad',   desc: null },
-    { time: 8,  vadState: 'Boşluk Tespit Edildi!', step: 'vlm', desc: null },
-    { time: 10, vadState: 'VLM Analiz Ediyor...', step: 'vlm', desc: null },
-    { time: 12, vadState: 'Seslendiriliyor', step: 'tts', desc: "Stüdyoda bir spiker, masanın karşısında oturuyor. Ellerinde notlar var, kameraya bakıyor." },
-    { time: 14, vadState: 'Mix Yapılıyor', step: 'mixer', desc: null },
-    { time: 16, vadState: 'Sessizlik', step: null, desc: null },
-    { time: 22, vadState: 'Boşluk Tespit Edildi!', step: 'vlm', desc: null },
-    { time: 25, vadState: 'VLM Analiz Ediyor...', step: 'vlm', desc: null },
-    { time: 27, vadState: 'Seslendiriliyor', step: 'tts', desc: "Ekranda bir grafik belirdi. Yüzde seksen beş oranında artış gösteren çubuk grafik gösteriliyor." },
-    { time: 30, vadState: 'Mix Yapılıyor', step: 'mixer', desc: null },
-    { time: 33, vadState: 'Sessizlik', step: null, desc: null },
-    { time: 40, vadState: 'Boşluk Tespit Edildi!', step: 'vlm', desc: null },
-    { time: 43, vadState: 'VLM Analiz Ediyor...', step: 'vlm', desc: null },
-    { time: 45, vadState: 'Seslendiriliyor', step: 'tts', desc: "İki kişi tartışıyor. Sağdaki kişi ayağa kalktı, sol taraftaki pencereden dışarıya bakıyor." },
-    { time: 48, vadState: 'Mix Yapılıyor', step: 'mixer', desc: null },
-    { time: 50, vadState: 'Sessizlik', step: null, desc: null },
-    { time: 54, vadState: 'Boşluk Tespit Edildi!', step: 'vlm', desc: null },
-    { time: 56, vadState: 'Seslendiriliyor', step: 'tts', desc: "Sahne dışarıya geçti. Gün batımında şehir silueti görünüyor, arabalar yolda ilerliyor." },
-    { time: 58, vadState: 'Mix Yapılıyor', step: 'mixer', desc: null },
-];
+videoPlaceholder.addEventListener('click', () => videoInput.click());
+videoPlaceholder.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    videoPlaceholder.classList.add('dragover');
+});
+videoPlaceholder.addEventListener('dragleave', () => {
+    videoPlaceholder.classList.remove('dragover');
+});
+videoPlaceholder.addEventListener('drop', (e) => {
+    e.preventDefault();
+    videoPlaceholder.classList.remove('dragover');
+    const files = e.dataTransfer.files;
+    if (files.length > 0) handleFileSelect(files[0]);
+});
 
-// Waveform setup
-const waveformEl = document.getElementById('waveform');
-const NUM_BARS = 48;
-let waveBars = [];
-if (waveformEl) {
-    for (let i = 0; i < NUM_BARS; i++) {
-        const bar = document.createElement('div');
-        bar.style.cssText = 'flex:1; border-radius:2px; background:#333; transition: height 0.15s ease;';
-        bar.style.height = '4px';
-        waveformEl.appendChild(bar);
-        waveBars.push(bar);
+videoInput.addEventListener('change', (e) => {
+    if (e.target.files.length > 0) handleFileSelect(e.target.files[0]);
+});
+
+function handleFileSelect(file) {
+    const allowed = ['.mp4', '.mkv', '.avi', '.mov', '.webm'];
+    const ext = '.' + file.name.split('.').pop().toLowerCase();
+    if (!allowed.includes(ext)) {
+        showStatus('Desteklenmeyen format! İzin verilenler: ' + allowed.join(', '), 'error');
+        return;
+    }
+    
+    selectedFile = file;
+    processedBlob = null;
+    downloadBtn.disabled = true;
+    
+    const url = URL.createObjectURL(file);
+    videoPlayer.src = url;
+    videoPlayer.classList.remove('hidden');
+    videoPlaceholder.classList.add('hidden');
+    
+    processBtn.disabled = false;
+    showStatus(`Seçildi: ${file.name} (${formatSize(file.size)})`, 'success');
+}
+
+function triggerUpload() {
+    videoInput.click();
+}
+
+function formatSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+async function processVideo() {
+    if (!selectedFile || isProcessing) return;
+    
+    isProcessing = true;
+    processBtn.disabled = true;
+    uploadBtn.disabled = true;
+    
+    uploadProgressContainer.classList.remove('hidden');
+    videoPlayer.classList.add('hidden');
+    videoPlaceholder.classList.remove('hidden');
+    videoIcon.textContent = '⏳';
+    videoStatusText.textContent = 'Video İşleniyor...';
+    document.querySelector('.upload-hint')?.remove();
+    
+    setStep('vad', 'active');
+    showStatus('Video yükleniyor...', 'info');
+    
+    try {
+        const result = await uploadVideo(selectedFile, (percent) => {
+            uploadProgress.style.width = percent + '%';
+            uploadPercent.textContent = percent + '%';
+            if (percent === 100) {
+                document.querySelector('.progress-label').textContent = 'İşleniyor...';
+            }
+        });
+        
+        processedBlob = result.blob;
+        downloadBtn.disabled = false;
+        
+        const procTime = result.procTime || '?';
+        showStatus(`İşlem tamamlandı! (${procTime})`, 'success');
+        
+        setStep('vad', 'done');
+        setStep('vlm', 'done');
+        setStep('tts', 'done');
+        setStep('mixer', 'done');
+        
+        videoIcon.textContent = '✅';
+        videoStatusText.textContent = 'İşlem Tamamlandı - İndirmek için tıklayın';
+        videoPlaceholder.onclick = downloadResult;
+        
+        addDescription(`Video başarıyla işlendi. İşlem süresi: ${procTime}`, new Date().toLocaleTimeString('tr-TR'));
+        
+        const url = URL.createObjectURL(result.blob);
+        videoPlayer.src = url;
+        videoPlayer.classList.remove('hidden');
+        videoPlaceholder.classList.add('hidden');
+        
+    } catch (error) {
+        showStatus('Hata: ' + error.message, 'error');
+        resetAllSteps();
+        videoIcon.textContent = '❌';
+        videoStatusText.textContent = 'Hata Oluştu';
+    } finally {
+        isProcessing = false;
+        uploadProgressContainer.classList.add('hidden');
+        uploadProgress.style.width = '0%';
+        uploadPercent.textContent = '0%';
+        processBtn.disabled = false;
+        uploadBtn.disabled = false;
     }
 }
 
-function animateWave(active) {
-    waveBars.forEach((bar, i) => {
-        const h = active ? Math.random() * 44 + 4 : Math.random() * 6 + 2;
-        bar.style.height = h + 'px';
-        bar.style.background = active ? '#CC0000' : '#333';
-    });
+function downloadResult() {
+    if (!processedBlob) return;
+    const filename = selectedFile ? `engelsiz_${selectedFile.name}` : 'engelsiz_video.mp4';
+    downloadBlob(processedBlob, filename);
+    showStatus('Video indirildi!', 'success');
 }
 
-// Pipeline state helpers
-function setStep(stepId, state) { // 'idle' | 'active' | 'done'
+function resetAll() {
+    selectedFile = null;
+    processedBlob = null;
+    isProcessing = false;
+    
+    videoPlayer.src = '';
+    videoPlayer.classList.add('hidden');
+    videoPlaceholder.classList.remove('hidden');
+    videoIcon.textContent = '📺';
+    videoStatusText.textContent = 'Video Yüklemek İçin Tıklayın';
+    videoPlaceholder.onclick = () => videoInput.click();
+    
+    const hint = document.createElement('div');
+    hint.className = 'upload-hint';
+    hint.textContent = 'veya sürükle bırak';
+    videoPlaceholder.querySelector('.video-content').appendChild(hint);
+    
+    uploadProgressContainer.classList.add('hidden');
+    processBtn.disabled = true;
+    downloadBtn.disabled = true;
+    
+    resetAllSteps();
+    setMixer(100, 0, '0 dB', '— dB');
+    
+    const feed = document.getElementById('desc-feed');
+    if (feed) feed.innerHTML = '<div class="desc-empty"><div class="empty-icon">🔊</div><p>Yayın başladığında betimleme akışı burada görünecek...</p></div>';
+    document.getElementById('desc-count').textContent = '0 betimleme';
+    
+    showStatus('Sıfırlandı', 'info');
+}
+
+function setStep(stepId, state) {
     const badge = document.getElementById('badge-' + stepId);
     const dot = document.querySelector('#step-' + stepId + ' .pipe-dot');
     if (!badge || !dot) return;
@@ -75,9 +190,10 @@ function addDescription(text, timeStr) {
     item.className = 'desc-item';
     item.innerHTML = `<div class="desc-item-time">⏱ ${timeStr}</div><div class="desc-item-text">${text}</div>`;
     feed.prepend(item);
-    descCount++;
+    
     const countEl = document.getElementById('desc-count');
-    if (countEl) countEl.textContent = descCount + ' betimleme';
+    const count = feed.querySelectorAll('.desc-item').length;
+    if (countEl) countEl.textContent = count + ' betimleme';
 }
 
 function setMixer(originalPct, descPct, originalDb, descDb) {
@@ -91,112 +207,27 @@ function setMixer(originalPct, descPct, originalDb, descDb) {
     if (ddb) ddb.textContent = descDb;
 }
 
-function formatTime(sec) {
-    const m = Math.floor(sec / 60).toString().padStart(2, '0');
-    const s = (sec % 60).toString().padStart(2, '0');
-    return m + ':' + s;
+function showStatus(message, type) {
+    statusMessage.textContent = message;
+    statusMessage.className = 'ctrl-info ' + (type || '');
 }
 
-let processedEvents = new Set();
-
-function tick() {
-    elapsedSec++;
-
-    // Progress bar & time
-    const pct = (elapsedSec / totalSec) * 100;
-    const pBar = document.getElementById('video-progress');
-    const cTime = document.getElementById('current-time');
-    if (pBar) pBar.style.width = Math.min(pct, 100) + '%';
-    if (cTime) cTime.textContent = formatTime(elapsedSec);
-
-    // VAD label
-    const vadLabel = document.getElementById('vad-label');
-
-    // Check events
-    simulationEvents.forEach((evt, idx) => {
-        if (evt.time === elapsedSec && !processedEvents.has(idx)) {
-            processedEvents.add(idx);
-
-            if (vadLabel) vadLabel.textContent = 'VAD: ' + evt.vadState;
-
-            resetAllSteps();
-
-            if (evt.step) {
-                setStep('vad', 'done');
-                if (evt.step === 'vlm') { setStep('vlm', 'active'); setMixer(100, 0, '0 dB', '— dB'); }
-                if (evt.step === 'tts') { setStep('vlm', 'done'); setStep('tts', 'active'); }
-                if (evt.step === 'mixer') { setStep('tts', 'done'); setStep('mixer', 'active'); setMixer(30, 100, '-12 dB', '0 dB'); }
-            } else {
-                setMixer(100, 0, '0 dB', '— dB');
-            }
-
-            if (evt.desc) {
-                setTimeout(() => {
-                    addDescription(evt.desc, formatTime(elapsedSec));
-                    setStep('mixer', 'done');
-                    setMixer(100, 0, '0 dB', '— dB');
-                }, 800);
-            }
-        }
-    });
-
-    // Animate waveform
-    const isSpeaking = simulationEvents.some(e => {
-        return elapsedSec >= e.time && e.vadState === 'Sessizlik';
-    });
-    animateWave(!isSpeaking);
-
-    if (elapsedSec >= totalSec) {
-        clearInterval(simTimer);
-        simRunning = false;
-        const btn = document.getElementById('start-btn');
-        if (btn) { btn.textContent = '✓ Simülasyon Bitti'; btn.disabled = true; }
+async function checkBackendStatus() {
+    const health = await checkHealth();
+    const statusDot = backendStatus.querySelector('.status-dot');
+    const statusText = backendStatus.querySelector('.status-text');
+    
+    if (health && health.status === 'ok') {
+        statusDot.classList.add('connected');
+        statusText.textContent = 'Backend: Bağlı';
+        showStatus('Backend bağlantısı hazır', 'success');
+    } else {
+        statusDot.classList.add('disconnected');
+        statusText.textContent = 'Backend: Bağlantı Yok';
+        showStatus('Backend erişilemiyor. Sunucuyu başlatın: python api_server.py', 'error');
     }
 }
 
-function startSimulation() {
-    if (simRunning) return;
-    simRunning = true;
-    const btn = document.getElementById('start-btn');
-    if (btn) btn.textContent = '⏸ Çalışıyor...';
-    setStep('vad', 'active');
-    simTimer = setInterval(tick, 1000);
-}
-
-function resetSimulation() {
-    clearInterval(simTimer);
-    simRunning = false;
-    elapsedSec = 0;
-    descCount = 0;
-    processedEvents.clear();
-
-    const pBar = document.getElementById('video-progress');
-    const cTime = document.getElementById('current-time');
-    const feed = document.getElementById('desc-feed');
-    const vadLabel = document.getElementById('vad-label');
-    const btn = document.getElementById('start-btn');
-    const countEl = document.getElementById('desc-count');
-
-    if (pBar) pBar.style.width = '0%';
-    if (cTime) cTime.textContent = '00:00';
-    if (vadLabel) vadLabel.textContent = 'VAD: Bekliyor';
-    if (btn) { btn.textContent = '▶ Simülasyonu Başlat'; btn.disabled = false; }
-    if (countEl) countEl.textContent = '0 betimleme';
-    if (feed) feed.innerHTML = '<div class="desc-empty"><div class="empty-icon">🔊</div><p>Yayın başladığında betimleme akışı burada görünecek...</p></div>';
-
-    resetAllSteps();
-    setMixer(100, 0, '0 dB', '— dB');
-    waveBars.forEach(b => { b.style.height = '4px'; b.style.background = '#333'; });
-}
-
-// Initial mixer state
 setMixer(100, 0, '0 dB', '— dB');
-
-// Idle waveform
-setInterval(() => {
-    if (!simRunning) {
-        waveBars.forEach(bar => {
-            bar.style.height = (Math.random() * 4 + 2) + 'px';
-        });
-    }
-}, 200);
+checkBackendStatus();
+setInterval(checkBackendStatus, 30000);

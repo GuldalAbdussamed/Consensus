@@ -42,9 +42,15 @@
             <h1>Canlı Pipeline Monitörü</h1>
             <p>Sistemin her adımı gerçek zamanlı izleniyor</p>
         </div>
-        <div class="live-badge">
-            <span class="live-dot"></span>
-            CANLI
+        <div class="header-right">
+            <div class="backend-status" id="backend-status">
+                <span class="status-dot"></span>
+                <span class="status-text">Bağlantı kontrol ediliyor...</span>
+            </div>
+            <div class="live-badge">
+                <span class="live-dot"></span>
+                CANLI
+            </div>
         </div>
     </div>
 
@@ -58,35 +64,22 @@
                 <span class="panel-status status-ok">Aktif</span>
             </div>
             <div class="video-wrapper">
-                <div class="video-placeholder">
+                <div class="video-placeholder" id="video-placeholder">
                     <div class="video-scanlines"></div>
                     <div class="video-content">
-                        <div class="channel-logo">📺</div>
-                        <div class="channel-name">CANLIYAYIN HD</div>
-                        <div class="video-bars-demo">
-                            <div class="vbar" style="--h:40%"></div>
-                            <div class="vbar" style="--h:70%"></div>
-                            <div class="vbar" style="--h:55%"></div>
-                            <div class="vbar" style="--h:80%"></div>
-                            <div class="vbar" style="--h:45%"></div>
-                            <div class="vbar" style="--h:90%"></div>
-                            <div class="vbar" style="--h:60%"></div>
-                            <div class="vbar" style="--h:75%"></div>
-                            <div class="vbar" style="--h:50%"></div>
-                            <div class="vbar" style="--h:65%"></div>
-                            <div class="vbar" style="--h:85%"></div>
-                            <div class="vbar" style="--h:40%"></div>
-                        </div>
+                        <div class="channel-logo" id="video-icon">📺</div>
+                        <div class="channel-name" id="video-status-text">Video Yüklemek İçin Tıklayın</div>
+                        <div class="upload-hint">veya sürükle bırak</div>
                     </div>
                 </div>
-                <div class="video-progress">
+                <video id="video-player" class="video-player hidden" controls></video>
+                <input type="file" id="video-input" accept=".mp4,.mkv,.avi,.mov,.webm" hidden>
+                <div class="video-progress hidden" id="upload-progress-container">
+                    <div class="progress-label">Yükleniyor...</div>
                     <div class="progress-bar">
-                        <div class="progress-fill" id="video-progress"></div>
+                        <div class="progress-fill" id="upload-progress"></div>
                     </div>
-                    <div class="time-display">
-                        <span id="current-time">00:00</span>
-                        <span>01:00</span>
-                    </div>
+                    <div class="progress-percent" id="upload-percent">0%</div>
                 </div>
             </div>
 
@@ -190,14 +183,17 @@
 
     <!-- Demo Controls -->
     <div class="demo-controls">
-        <button class="ctrl-btn" id="start-btn" onclick="startSimulation()">▶ Simülasyonu Başlat</button>
-        <button class="ctrl-btn ctrl-secondary" id="reset-btn" onclick="resetSimulation()">↺ Sıfırla</button>
+        <button class="ctrl-btn" id="upload-btn" onclick="triggerUpload()">📤 Video Yükle</button>
+        <button class="ctrl-btn ctrl-secondary" id="process-btn" onclick="processVideo()" disabled>⚙️ İşle</button>
+        <button class="ctrl-btn ctrl-secondary" id="download-btn" onclick="downloadResult()" disabled>📥 İndir</button>
+        <button class="ctrl-btn ctrl-secondary" id="reset-btn" onclick="resetAll()">↺ Sıfırla</button>
         <div class="ctrl-info">
-            <span>🔴 Gerçek sistemde backend ile WebSocket bağlantısı kurulur</span>
+            <span id="status-message">Backend ile bağlantı kuruluyor...</span>
         </div>
     </div>
 </div>
 
+<script src="api.js"></script>
 <script src="demo.js"></script>
 </body>
 </html>

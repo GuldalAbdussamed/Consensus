@@ -20,6 +20,7 @@ from pathlib import Path
 
 import uvicorn
 from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 
 import config
@@ -38,6 +39,14 @@ app = FastAPI(
     title="Engelsiz TV API",
     description="Video yükle → sesli betimleme ekle → işlenmiş videoyu indir",
     version="1.0.0",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # ── Concurrency kontrolü ─────────────────────────────────

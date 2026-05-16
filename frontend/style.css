@@ -356,7 +356,40 @@ a { text-decoration: none; color: inherit; }
 .ctrl-btn.ctrl-secondary { background: var(--surface2); border: 1px solid var(--border); }
 .ctrl-btn.ctrl-secondary:hover { background: var(--gray-dim); }
 .ctrl-info { margin-left: auto; font-size: 0.8rem; color: var(--gray); }
+.ctrl-info.success { color: #00cc66; }
+.ctrl-info.error { color: #ff6666; }
+.ctrl-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
 .demo-right { display: flex; flex-direction: column; gap: 20px; }
+
+.header-right { display: flex; align-items: center; gap: 16px; }
+.backend-status {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 14px; border-radius: 100px;
+    background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+    font-size: 0.8rem; color: var(--gray);
+}
+.status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--gray);
+}
+.status-dot.connected { background: #00cc66; box-shadow: 0 0 8px #00cc66; }
+.status-dot.disconnected { background: #ff4444; box-shadow: 0 0 8px #ff4444; }
+
+.video-player {
+    width: 100%; aspect-ratio: 16/9; background: #000;
+    border-radius: 8px;
+}
+.video-player.hidden { display: none; }
+
+.video-placeholder { cursor: pointer; transition: border-color 0.3s; }
+.video-placeholder:hover { border: 2px dashed var(--red); }
+.video-placeholder.dragover { border: 2px dashed var(--red); background: rgba(204,0,0,0.1); }
+
+.upload-hint { font-size: 0.75rem; color: var(--gray); margin-top: 8px; }
+
+.video-progress.hidden { display: none; }
+.progress-label { font-size: 0.8rem; color: var(--gray); margin-bottom: 8px; }
+.progress-percent { font-size: 0.75rem; color: var(--red); text-align: right; margin-top: 4px; }
 
 /* ===================== PARTNERS PAGE ===================== */
 .partners-page { padding-top: 64px; }
