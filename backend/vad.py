@@ -42,6 +42,8 @@ log = logging.getLogger("vad")
 
 def _compute_hsv_histogram(frame_bgr: np.ndarray) -> np.ndarray:
     """HSV histogram — test_vllm.py ile birebir aynı."""
+    mean_val = np.mean(frame_bgr)
+    log.debug("Histogram: frame mean=%.2f", mean_val)
     hsv = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2HSV)
     bins = config.HSV_HIST_BINS
     hist = cv2.calcHist([hsv], [0, 1], None, list(bins), [0, 180, 0, 256])
@@ -72,6 +74,7 @@ class SceneGallery:
             ]
             min_idx = int(np.argmin(distances))
             min_dist = float(distances[min_idx])
+            log.debug("Match: min_idx=%d, dist=%.4f (gallery_size=%d)", min_idx, min_dist, len(self._items))
             if min_dist < config.SCENE_CHANGE_THRESHOLD:
                 return min_idx, min_dist, self._items[min_idx][1]
             return None, min_dist, None
@@ -185,11 +188,16 @@ class FrameHistory:
                 return []
             frames_list = list(self._frames)
             result = []
+            picked_times = []
             for off in offsets:
                 target = center_video_time + off
                 # En yakın frame
                 closest = min(frames_list, key=lambda x: abs(x[0] - target))
                 result.append(closest[1])
+                picked_times.append(closest[0])
+            
+            log.debug("get_window(center=%.2f): range=[%.2f-%.2f], picked=%s", 
+                      center_video_time, frames_list[0][0], frames_list[-1][0], picked_times)
             return result
 
 
@@ -272,10 +280,12 @@ async def run(
     realtime: bool = True,
 ):
     """VAD worker — audio lookahead'i tüketir, boşlukları gap_queue'ya basar."""
-    log.info("VAD worker başlıyor (lookahead=%.1fs)", config.AUDIO_LOOKAHEAD_SEC)
+    log.info("VAD worker başlıyor (lookahead=%.1fs, realtime=%s)", 
+             config.AUDIO_LOOKAHEAD_SEC, realtime)
 
-    audio_buf = AudioRingBuffer(config.VAD_BUFFER_SEC, config.AUDIO_SAMPLE_RATE)
-    frame_hist = FrameHistory(max_age_sec=300.0)
+    # Batch modda tüm videoyu hafızada tutabiliriz (max 1 saatlik video için ~3600sn)
+    history_sec = 3600.0 if not realtime else 300.0
+    frame_hist = FrameHistory(max_age_sec=history_sec)
 
     # Daha önce GapItem üretilmiş boşlukları tekrar üretme
     # (audio buffer kayarken aynı boşluğu yeniden görebiliriz)
