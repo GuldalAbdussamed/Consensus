@@ -366,11 +366,11 @@ async def run(
                         (gs, ge) for gs, ge in all_gaps if (gs + ge) / 2 <= safe_cutoff
                     ]
 
-                    # Daha önce emit edilmiş mi? (overlap tabanlı — %50 kesişim)
+                    # Daha önce emit edilmiş mi? (overlap tabanlı — %30 kesişim)
                     for gs, ge in candidate_gaps:
                         gap_dur = ge - gs
                         already = any(
-                            max(0, min(ge, eg[1]) - max(gs, eg[0])) > gap_dur * 0.5
+                            max(0, min(ge, eg[1]) - max(gs, eg[0])) >= gap_dur * 0.3
                             for eg in emitted_gaps
                         )
                         if already:
@@ -460,8 +460,9 @@ async def run(
 
                     # Son pass'ta safe_cutoff uygulamıyoruz — tüm boşluklar geçerli
                     for gs, ge in all_gaps:
+                        gap_dur = ge - gs
                         already = any(
-                            abs(gs - eg[0]) < 0.3 and abs(ge - eg[1]) < 0.3
+                            max(0, min(ge, eg[1]) - max(gs, eg[0])) >= gap_dur * 0.3
                             for eg in emitted_gaps
                         )
                         if already:

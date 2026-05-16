@@ -58,14 +58,14 @@ VAD_MIN_SILENCE_MS = 300
 VAD_MIN_SPEECH_MS = 250
 
 # Minimum kullanılabilir boşluk — bundan kısa TTS sığmaz
-MIN_GAP_SEC = 1.5
+MIN_GAP_SEC = 2.5
 
 # Çok uzun boşlukları parçalara böl (örn. 30sn'lik boşluğa tek betimleme yetmez)
-MAX_GAP_CHUNK_SEC = 8.0
+MAX_GAP_CHUNK_SEC = 5.0
 
 # VAD ne sıklıkla audio buffer üzerinde çalışsın?
 # Audio buffer'a yeni chunk geldikçe değil, periyodik:
-VAD_INTERVAL_SEC = 0.5
+VAD_INTERVAL_SEC = 1.0
 
 # VAD penceresi: son kaç saniyelik audio üzerinden çalışsın?
 # Look-ahead + biraz geçmiş yeterli
@@ -77,7 +77,7 @@ VAD_BUFFER_SEC = 5.0
 
 # Bu eşik altındaki mesafe = "aynı sahne, betimleme tekrarlama"
 # test_vllm.py'da 0.25 oldu, A-B-A-B kamera açılarında iyi çalıştı
-SCENE_CHANGE_THRESHOLD = 0.25
+SCENE_CHANGE_THRESHOLD = 0.40
 
 # HSV histogram bin sayıları (test_vllm.py ile aynı)
 HSV_HIST_BINS = (50, 60)
@@ -104,7 +104,7 @@ VLM_TEMPERATURE = 0.2
 
 # Jaccard tekrar filtresi eşiği (0-1)
 # İki cümlenin kelime setleri bu oranda kesişiyorsa "tekrar" say
-JACCARD_REPEAT_THRESHOLD = 0.6
+JACCARD_REPEAT_THRESHOLD = 0.35
 
 # ============================================================
 # TTS (XTTS-v2) parametreleri
