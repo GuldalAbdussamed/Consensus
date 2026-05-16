@@ -1,5 +1,4 @@
-// Backend ve Frontend aynı porttan (80) servis edildiği için relative path kullanıyoruz.
-const BASE = ''; 
+const BASE = 'http://0.0.0.0:8000'; 
 
 async function checkHealth() {
     try {
