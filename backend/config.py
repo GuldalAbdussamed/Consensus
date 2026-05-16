@@ -77,7 +77,7 @@ VAD_BUFFER_SEC = 5.0
 
 # Bu eşik altındaki mesafe = "aynı sahne, betimleme tekrarlama"
 # test_vllm.py'da 0.25 oldu, A-B-A-B kamera açılarında iyi çalıştı
-SCENE_CHANGE_THRESHOLD = 0.25
+SCENE_CHANGE_THRESHOLD = 0.10
 
 # HSV histogram bin sayıları (test_vllm.py ile aynı)
 HSV_HIST_BINS = (50, 60)
