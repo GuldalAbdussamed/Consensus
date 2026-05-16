@@ -13,13 +13,13 @@ API_HOST = "0.0.0.0"
 API_PORT = 8000
 
 # vLLM (Qwen2.5-VL) sunucusu — AWS L40S
-VLLM_URL = "http://ec2-3-145-206-228.us-east-2.compute.amazonaws.com:8000/v1"
+VLLM_URL = "http://ec2-3-145-11-252.us-east-2.compute.amazonaws.com:8000/v1"
 VLLM_MODEL = "Qwen/Qwen2.5-VL-7B-Instruct-AWQ"
 VLLM_API_KEY = "dummy"  # vLLM doğrulama istemiyor
 
 # XTTS-v2 sunucusu — aynı L40S, yan yana (durum notu kararı)
 # tts_server.py'ı L40S'te başlatınca burayı güncelle
-TTS_URL = "http://ec2-3-144-104-180.us-east-2.compute.amazonaws.com:8020"
+TTS_URL = "http://ec2-18-216-12-121.us-east-2.compute.amazonaws.com:8020"
 TTS_LANGUAGE = "tr"
 TTS_SPEAKER_WAV = None  # None = default ses; ileride ses klonlama için referans WAV
 
