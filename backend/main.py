@@ -84,15 +84,18 @@ async def run_pipeline(args):
     # Diğer worker'lar
     worker_tasks = [
         asyncio.create_task(
-            vad.run(audio_la_q, frame_q, gap_q, scene_gallery, context_ref, stop_event),
+            vad.run(audio_la_q, frame_q, gap_q, scene_gallery, context_ref, stop_event,
+                    realtime=True),
             name="vad",
         ),
         asyncio.create_task(
-            vlm.run(gap_q, desc_q, scene_gallery, context_ref, stop_event),
+            vlm.run(gap_q, desc_q, scene_gallery, context_ref, stop_event,
+                    realtime=True),
             name="vlm",
         ),
         asyncio.create_task(
-            tts.run(desc_q, tts_audio_q, stop_event, force_mock=args.mock_tts),
+            tts.run(desc_q, tts_audio_q, stop_event, force_mock=args.mock_tts,
+                    realtime=True),
             name="tts",
         ),
         asyncio.create_task(

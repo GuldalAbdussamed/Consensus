@@ -220,11 +220,13 @@ async def _run_pipeline_async(
             name="vad",
         ),
         asyncio.create_task(
-            vlm.run(gap_q, desc_q, scene_gallery, context_ref, stop_event),
+            vlm.run(gap_q, desc_q, scene_gallery, context_ref, stop_event,
+                    realtime=False),
             name="vlm",
         ),
         asyncio.create_task(
-            tts.run(desc_q, tts_audio_q, stop_event, force_mock=False),
+            tts.run(desc_q, tts_audio_q, stop_event, force_mock=False,
+                    realtime=False),
             name="tts",
         ),
     ]

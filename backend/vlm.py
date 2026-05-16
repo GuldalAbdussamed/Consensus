@@ -216,13 +216,13 @@ async def run(
     scene_gallery: SceneGallery,
     context_ref: ContextRef,
     stop_event: asyncio.Event,
+    realtime: bool = True,
 ):
-    log.info("VLM worker başlıyor (server: %s)", config.VLLM_URL)
+    log.info("VLM worker başlıyor (server: %s, realtime=%s)", config.VLLM_URL, realtime)
     client = AsyncOpenAI(base_url=config.VLLM_URL, api_key=config.VLLM_API_KEY)
     
-    # Paralel VLM çağrısı için semaphore (sunucuyu ezmeyelim ama hızlanalım)
-    # Batch modda throughput için 4 paralel çağrı iyidir.
-    semaphore = asyncio.Semaphore(4)
+    # Paralel VLM çağrısı için semaphore
+    semaphore = asyncio.Semaphore(5)
 
     async def process_item(gap: GapItem):
         async with semaphore:
@@ -245,8 +245,11 @@ async def run(
                 log.info("ZAYIF (elendi): %s  [ham: %s]", cleaned, raw.strip()[:80])
                 return
 
-            if is_jaccard_repeat(cleaned, gap.context):
-                log.info("JACCARD-TEKRAR (elendi): %s", cleaned)
+            # Paralel çalışmada, task bitene kadar başka bir task galeriyi/bağlamı güncellemiş olabilir.
+            # En taze bağlamla tekrar kontrol et.
+            latest_ctx = await context_ref.snapshot()
+            if is_jaccard_repeat(cleaned, latest_ctx):
+                log.info("JACCARD-TEKRAR (paralel elendi): %s", cleaned)
                 return
 
             # Galeri ve bağlam güncelle
@@ -281,11 +284,13 @@ async def run(
             break
 
         gap: GapItem = item
-        # Stale gap kontrolü
-        age = time.time() - gap.wall_time
-        if age > config.MAX_AUDIO_AGE_SEC:
-            log.warning("Stale GapItem atlandı (yaş=%.1fs, t=%.2f)", age, gap.video_time_center)
-            continue
+        
+        # Stale gap kontrolü (sadece realtime modda)
+        if realtime:
+            age = time.time() - gap.wall_time
+            if age > config.MAX_AUDIO_AGE_SEC:
+                log.warning("Stale GapItem atlandı (yaş=%.1fs, t=%.2f)", age, gap.video_time_center)
+                continue
 
         task = asyncio.create_task(process_item(gap))
         pending_tasks.add(task)

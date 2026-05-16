@@ -128,8 +128,9 @@ async def run(
     audio_queue: asyncio.Queue,
     stop_event: asyncio.Event,
     force_mock: bool = False,
+    realtime: bool = True,
 ):
-    log.info("TTS worker başlıyor (force_mock=%s)", force_mock)
+    log.info("TTS worker başlıyor (force_mock=%s, realtime=%s)", force_mock, realtime)
 
     async with httpx.AsyncClient() as client:
         if force_mock:
@@ -140,8 +141,8 @@ async def run(
             probe_dur = time.time() - t_probe
             log.info("TTS probe %.1fs sürdü", probe_dur)
 
-            # Probe beklerken kuyrukta biriken stale description'ları temizle
-            if probe_dur > 2.0:
+            # Probe beklerken kuyrukta biriken stale description'ları temizle (sadece realtime modda)
+            if realtime and probe_dur > 2.0:
                 flushed = 0
                 while True:
                     try:
@@ -172,11 +173,12 @@ async def run(
 
             desc: DescriptionItem = item
 
-            # Stale kontrolü
-            age = time.time() - desc.wall_time
-            if age > config.MAX_AUDIO_AGE_SEC:
-                log.warning("Stale desc atlandı (%.1fs): %s", age, desc.text[:50])
-                continue
+            # Stale kontrolü (sadece realtime modda)
+            if realtime:
+                age = time.time() - desc.wall_time
+                if age > config.MAX_AUDIO_AGE_SEC:
+                    log.warning("Stale desc atlandı (%.1fs): %s", age, desc.text[:50])
+                    continue
 
             t0 = time.time()
             try:

@@ -145,13 +145,13 @@ AUDIO_QUEUE_SIZE = 50
 FRAME_QUEUE_SIZE = 4
 
 # Gap queue: VAD'in bulduğu boşluklar VLM'i bekliyor
-GAP_QUEUE_SIZE = 20
+GAP_QUEUE_SIZE = 50
 
 # Description queue: VLM çıktıları TTS'i bekliyor
-DESC_QUEUE_SIZE = 4
+DESC_QUEUE_SIZE = 50
 
 # Audio queue: TTS çıktıları mixer'ı bekliyor
-TTS_AUDIO_QUEUE_SIZE = 4
+TTS_AUDIO_QUEUE_SIZE = 50
 
 # ============================================================
 # Stale audio: TTS bittiğinde boşluk geçtiyse atla
