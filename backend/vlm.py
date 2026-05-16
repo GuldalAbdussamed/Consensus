@@ -40,6 +40,7 @@ META_PATTERNS = [
     r"^(görme engelli|kullanıcı|izleyici)[a-zçğıöşü\s]*için[,:\s]+",
     r"^(görüyoruz ki|görülmektedir ki|anlaşılan|bu karede|sahnede)[,:\s]+",
     r"^(şimdi|bu anda|şu anda)[,:\s]+",
+    r"^(görev|sahneyi tanıt|betimleme)[,:\s]+",
 ]
 
 WEAK_VERBS = {
@@ -218,72 +219,81 @@ async def run(
 ):
     log.info("VLM worker başlıyor (server: %s)", config.VLLM_URL)
     client = AsyncOpenAI(base_url=config.VLLM_URL, api_key=config.VLLM_API_KEY)
+    
+    # Paralel VLM çağrısı için semaphore (sunucuyu ezmeyelim ama hızlanalım)
+    # Batch modda throughput için 4 paralel çağrı iyidir.
+    semaphore = asyncio.Semaphore(4)
 
-    while not stop_event.is_set():
+    async def process_item(gap: GapItem):
+        async with semaphore:
+            try:
+                cleaned, raw, latency = await _call_vlm(client, gap)
+            except asyncio.TimeoutError:
+                log.error("VLM timeout @ %.2fs", gap.video_time_center)
+                return
+            except Exception as e:
+                log.error("VLM hata @ %.2fs: %s", gap.video_time_center, e)
+                return
+
+            log.info("VLM (%.0fms, bütçe=%d): %s",
+                     latency, _word_budget(gap.available_seconds), cleaned)
+
+            if not cleaned:
+                return
+
+            if is_too_weak(cleaned):
+                log.info("ZAYIF (elendi): %s  [ham: %s]", cleaned, raw.strip()[:80])
+                return
+
+            if is_jaccard_repeat(cleaned, gap.context):
+                log.info("JACCARD-TEKRAR (elendi): %s", cleaned)
+                return
+
+            # Galeri ve bağlam güncelle
+            keyframe = gap.frames[len(gap.frames) // 2]
+            await scene_gallery.add(keyframe, cleaned)
+            await context_ref.append(cleaned)
+
+            # desc_queue'ya at
+            if desc_queue.full():
+                try:
+                    desc_queue.get_nowait()
+                except asyncio.QueueEmpty:
+                    pass
+            await desc_queue.put(DescriptionItem(
+                video_time_start=gap.video_time_start,
+                video_time_end=gap.video_time_end,
+                text=cleaned,
+                available_seconds=gap.available_seconds,
+                wall_time=time.time(),
+            ))
+
+    pending_tasks = set()
+
+    while not stop_event.is_set() or not gap_queue.empty():
         try:
-            item = await asyncio.wait_for(gap_queue.get(), timeout=1.0)
+            item = await asyncio.wait_for(gap_queue.get(), timeout=0.5)
         except asyncio.TimeoutError:
             continue
 
         if isinstance(item, StreamEnded):
-            log.info("VLM worker: gap stream bitti")
+            log.info("VLM worker: gap stream bitti, kalan %d task bekleniyor", len(pending_tasks))
             break
 
         gap: GapItem = item
-
-        # Stale gap kontrolü — wall_time çok eskiyse atla
+        # Stale gap kontrolü
         age = time.time() - gap.wall_time
         if age > config.MAX_AUDIO_AGE_SEC:
             log.warning("Stale GapItem atlandı (yaş=%.1fs, t=%.2f)", age, gap.video_time_center)
             continue
 
-        try:
-            cleaned, raw, latency = await _call_vlm(client, gap)
-        except asyncio.TimeoutError:
-            log.error("VLM timeout @ %.2fs", gap.video_time_center)
-            continue
-        except Exception as e:
-            log.error("VLM hata @ %.2fs: %s", gap.video_time_center, e)
-            continue
+        task = asyncio.create_task(process_item(gap))
+        pending_tasks.add(task)
+        task.add_done_callback(pending_tasks.discard)
 
-        log.info("VLM (%.0fms, bütçe=%d): %s",
-                 latency, _word_budget(gap.available_seconds), cleaned)
-
-        if not cleaned:
-            log.debug("Boş çıktı, atlanıyor")
-            continue
-
-        if is_too_weak(cleaned):
-            log.info("ZAYIF (elendi): %s  [ham: %s]", cleaned, raw.strip()[:80])
-            continue
-
-        if is_jaccard_repeat(cleaned, gap.context):
-            log.info("JACCARD-TEKRAR (elendi): %s", cleaned)
-            continue
-
-        # Galeri ve bağlam güncelle
-        keyframe = gap.frames[len(gap.frames) // 2]
-        await scene_gallery.add(keyframe, cleaned)
-
-        # Context güncelle
-        await context_ref.append(cleaned)
-
-        # desc_queue'ya at (backpressure: full ise eskiyi at)
-        if desc_queue.full():
-            try:
-                dropped = desc_queue.get_nowait()
-                log.warning("Desc queue full, eski item atıldı: %s",
-                            getattr(dropped, "text", "?")[:40])
-            except asyncio.QueueEmpty:
-                pass
-
-        await desc_queue.put(DescriptionItem(
-            video_time_start=gap.video_time_start,
-            video_time_end=gap.video_time_end,
-            text=cleaned,
-            available_seconds=gap.available_seconds,
-            wall_time=time.time(),
-        ))
+    # Kalan task'ları bekle
+    if pending_tasks:
+        await asyncio.gather(*pending_tasks, return_exceptions=True)
 
     await desc_queue.put(StreamEnded(reason="vlm_eof"))
     log.info("VLM worker durdu")
