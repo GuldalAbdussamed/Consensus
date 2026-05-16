@@ -298,23 +298,28 @@ async def run(
     loop = asyncio.get_running_loop()
 
     # İlk betimleme bayrağı — galeri boş olduğu sürece is_first=True
-    while not stop_event.is_set():
-        # === Audio queue'dan al ===
-        try:
-            audio_item = await asyncio.wait_for(audio_q_lookahead.get(), timeout=0.1)
-            if isinstance(audio_item, StreamEnded):
-                audio_done = True
-                log.info("Audio lookahead bitti")
-            else:
-                await audio_buf.append(audio_item)
-                chunks_since_vad += 1
-        except asyncio.TimeoutError:
-            pass
+    while not stop_event.is_set() or not audio_q_lookahead.empty() or not frame_queue.empty():
+        # === Audio queue'dan al (birikmiş her şeyi çek) ===
+        any_audio = False
+        while True:
+            try:
+                audio_item = audio_q_lookahead.get_nowait()
+                any_audio = True
+                if isinstance(audio_item, StreamEnded):
+                    audio_done = True
+                    log.info("Audio lookahead bitti")
+                else:
+                    await audio_buf.append(audio_item)
+                    chunks_since_vad += 1
+            except asyncio.QueueEmpty:
+                break
 
-        # === Frame queue'dan boşaltabildiğin kadar al ===
+        # === Frame queue'dan al (birikmiş her şeyi çek) ===
+        any_frame = False
         while True:
             try:
                 f_item = frame_queue.get_nowait()
+                any_frame = True
                 if isinstance(f_item, StreamEnded):
                     frame_done = True
                     log.info("Frame stream bitti")
@@ -322,6 +327,10 @@ async def run(
                     await frame_hist.add(f_item)
             except asyncio.QueueEmpty:
                 break
+
+        # İşlem yapılmadıysa kısa bekle (CPU yakma)
+        if not any_audio and not any_frame and not (audio_done and frame_done):
+            await asyncio.sleep(0.01)
 
         # === Periyodik VAD ===
         now = time.time()
@@ -356,21 +365,18 @@ async def run(
                     log.debug("VAD tarama: pencere=[%.2f-%.2f], %d konuşma, %d ham boşluk, %d chunk",
                               win_start, win_end, len(speech), len(raw_gaps), len(all_gaps))
 
-                    # Sondan bir tane bırak — çünkü buffer kayar ve şu an bitiyor
-                    # gibi görünen boşluk aslında devam ediyor olabilir.
-                    # Buffer'ın son 0.5sn'sinde MERKEZİ olan boşlukları erteleyelim.
-                    # (chunk sonu değil — chunk uzun boşluğun parçası olabilir, sonu hep
-                    #  pencere sınırına yakındır; biz merkezin hizalı olmasını isteriz.)
+                    # Sondan bir tane bırak
                     safe_cutoff = win_end - 0.5
                     candidate_gaps = [
                         (gs, ge) for gs, ge in all_gaps if (gs + ge) / 2 <= safe_cutoff
                     ]
 
-                    # Daha önce emit edilmiş mi? (overlap tabanlı — %30 kesişim)
+                    # Daha önce emit edilmiş mi?
                     for gs, ge in candidate_gaps:
                         gap_dur = ge - gs
+                        # Overlap kontrolü: %50'den fazla kesişim varsa atla
                         already = any(
-                            max(0, min(ge, eg[1]) - max(gs, eg[0])) >= gap_dur * 0.3
+                            max(0, min(ge, eg[1]) - max(gs, eg[0])) > gap_dur * 0.5
                             for eg in emitted_gaps
                         )
                         if already:
@@ -381,26 +387,21 @@ async def run(
 
                         # Frame penceresi yeterli mi?
                         latest_video_time = await frame_hist.latest_video_time()
-                        # center, latest_video_time'dan max FRAME_WINDOW_OFFSETS kadar geride olabilir
                         max_offset = max(config.FRAME_WINDOW_OFFSETS)
                         if center + max_offset > latest_video_time:
-                            # Frame'ler henüz yetişmedi, sonra denenecek
-                            log.debug("Frame'ler yetişmedi (center=%.2f, latest=%.2f), erteleniyor",
-                                      center, latest_video_time)
                             continue
 
                         frames = await frame_hist.get_window(center, config.FRAME_WINDOW_OFFSETS)
                         if not frames:
                             continue
 
-                        # Sahne galerisi kontrolü (orta frame ile)
+                        # Sahne galerisi kontrolü
                         keyframe = frames[len(frames) // 2]
                         matched_idx, dist, known_text = await scene_gallery.match(keyframe)
                         if matched_idx is not None:
                             log.info("Bilinen sahne #%d (Δ=%.2f) @ %.2fs → SUS: '%s'",
                                      matched_idx, dist, center, known_text[:40])
                             emitted_gaps.append((gs, ge))
-                            # Bağlama ekle (akış için)
                             await context_ref.append(known_text)
                             continue
 
@@ -419,12 +420,10 @@ async def run(
                             wall_time=time.time(),
                         )
 
-                        # Backpressure: gap_queue full ise eskiyi at
+                        # Backpressure
                         if gap_queue.full():
                             try:
-                                dropped = gap_queue.get_nowait()
-                                log.warning("Gap queue full, eski GapItem atıldı: t=%.2f",
-                                            getattr(dropped, "video_time_center", 0))
+                                gap_queue.get_nowait()
                             except asyncio.QueueEmpty:
                                 pass
 
@@ -433,7 +432,7 @@ async def run(
                         log.info("Boşluk → VLM: [%.2f-%.2f] (%.1fs), Δ_min=%.2f, first=%s",
                                  gs, ge, available, dist, is_first)
 
-                    # emitted_gaps'i temizle — buffer dışında kalanları at
+                    # emitted_gaps'i temizle
                     emitted_gaps = [
                         (gs, ge) for gs, ge in emitted_gaps if ge > win_start
                     ]
@@ -443,8 +442,10 @@ async def run(
 
         # === Çıkış koşulu ===
         if audio_done and frame_done:
-            # Son bir VAD pass yap — kalan audio'daki boşlukları yakala
-            log.info("VAD worker: tüm kaynaklar bitti, son VAD pass yapılıyor")
+            break
+
+    # Son bir VAD pass yap
+    log.info("VAD worker: tüm kaynaklar bitti, son VAD pass yapılıyor")
             audio_arr, win_start, win_end = await audio_buf.snapshot()
             if len(audio_arr) >= config.AUDIO_SAMPLE_RATE * 1.0:
                 try:

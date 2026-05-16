@@ -275,8 +275,10 @@ async def run(
 
     while not stop_event.is_set() or not gap_queue.empty():
         try:
-            item = await asyncio.wait_for(gap_queue.get(), timeout=0.5)
+            item = await asyncio.wait_for(gap_queue.get(), timeout=1.0)
         except asyncio.TimeoutError:
+            if pending_tasks:
+                log.debug("VLM beklemede: %d aktif task, gap_q=%d", len(pending_tasks), gap_queue.qsize())
             continue
 
         if isinstance(item, StreamEnded):
@@ -292,12 +294,17 @@ async def run(
                 log.warning("Stale GapItem atlandı (yaş=%.1fs, t=%.2f)", age, gap.video_time_center)
                 continue
 
+        # Semaphore kontrolünü burada logla (backpressure izlemesi)
+        if semaphore.locked():
+            log.debug("VLM Semaphore dolu, yeni task bekleyecek (aktif=%d)", len(pending_tasks))
+
         task = asyncio.create_task(process_item(gap))
         pending_tasks.add(task)
         task.add_done_callback(pending_tasks.discard)
 
     # Kalan task'ları bekle
     if pending_tasks:
+        log.info("VLM kapanıyor, son %d task bekleniyor...", len(pending_tasks))
         await asyncio.gather(*pending_tasks, return_exceptions=True)
 
     await desc_queue.put(StreamEnded(reason="vlm_eof"))

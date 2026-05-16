@@ -70,9 +70,27 @@ async def _audio_decoder_task(
     chunk_idx = 0
     try:
         while True:
-            data = await proc.stdout.readexactly(bytes_per_chunk)
-            pcm = np.frombuffer(data, dtype=np.float32).copy()
+            try:
+                data = await proc.stdout.readexactly(bytes_per_chunk)
+            except asyncio.IncompleteReadError as e:
+                # ffmpeg bitti; son artık veriyi de işle
+                if e.partial:
+                    pcm = np.frombuffer(e.partial, dtype=np.float32).copy()
+                    if len(pcm) > 0:
+                        video_time_start = chunk_idx * config.AUDIO_CHUNK_MS / 1000.0
+                        video_time_end = video_time_start + len(pcm) / config.AUDIO_SAMPLE_RATE
+                        chunk = AudioChunk(
+                            wall_time=time.time(),
+                            video_time_start=video_time_start,
+                            video_time_end=video_time_end,
+                            pcm=pcm,
+                            sample_rate=config.AUDIO_SAMPLE_RATE,
+                        )
+                        async with audio_buffer_lock:
+                            audio_buffer.append(chunk)
+                break
 
+            pcm = np.frombuffer(data, dtype=np.float32).copy()
             video_time_start = chunk_idx * config.AUDIO_CHUNK_MS / 1000.0
             video_time_end = video_time_start + len(pcm) / config.AUDIO_SAMPLE_RATE
 
@@ -88,29 +106,17 @@ async def _audio_decoder_task(
                 audio_buffer.append(chunk)
 
             chunk_idx += 1
+            
+        # ffmpeg'in başarıyla bittiğini doğrula
+        stdout, stderr = await proc.communicate()
+        if proc.returncode != 0:
+            log.error("FFmpeg audio decoder hatası (exit=%d): %s", proc.returncode, stderr.decode())
+        else:
+            log.info("Audio decoder bitti, %d chunk", chunk_idx)
 
-    except asyncio.IncompleteReadError as e:
-        # ffmpeg bitti; son artık veriyi de işle
-        if e.partial:
-            pcm = np.frombuffer(e.partial, dtype=np.float32).copy()
-            if len(pcm) > 0:
-                video_time_start = chunk_idx * config.AUDIO_CHUNK_MS / 1000.0
-                video_time_end = video_time_start + len(pcm) / config.AUDIO_SAMPLE_RATE
-                chunk = AudioChunk(
-                    wall_time=time.time(),
-                    video_time_start=video_time_start,
-                    video_time_end=video_time_end,
-                    pcm=pcm,
-                    sample_rate=config.AUDIO_SAMPLE_RATE,
-                )
-                async with audio_buffer_lock:
-                    audio_buffer.append(chunk)
-        log.info("Audio decoder bitti, %d chunk", chunk_idx)
+    except Exception as e:
+        log.error("Audio decoder task beklenmeyen hata: %s", e)
     finally:
-        try:
-            await proc.wait()
-        except Exception:
-            pass
         buffer_done.set()
 
 
