@@ -156,7 +156,7 @@ class FrameHistory:
     """Frame'leri video_time'a göre sakla. Boşluk merkezi belli olunca
     o noktanın çevresinden frame penceresi çıkar.
     """
-    def __init__(self, max_age_sec: float = 6.0):
+    def __init__(self, max_age_sec: float = 300.0):
         self.max_age_sec = max_age_sec
         # deque[(video_time, frame)] — sıralı (eklenme sırası ≈ video sırası)
         self._frames: deque[tuple[float, np.ndarray]] = deque()
@@ -275,7 +275,7 @@ async def run(
     log.info("VAD worker başlıyor (lookahead=%.1fs)", config.AUDIO_LOOKAHEAD_SEC)
 
     audio_buf = AudioRingBuffer(config.VAD_BUFFER_SEC, config.AUDIO_SAMPLE_RATE)
-    frame_hist = FrameHistory(max_age_sec=config.VAD_BUFFER_SEC + 2.0)
+    frame_hist = FrameHistory(max_age_sec=300.0)
 
     # Daha önce GapItem üretilmiş boşlukları tekrar üretme
     # (audio buffer kayarken aynı boşluğu yeniden görebiliriz)
