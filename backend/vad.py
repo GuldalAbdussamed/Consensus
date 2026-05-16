@@ -280,12 +280,10 @@ async def run(
     realtime: bool = True,
 ):
     """VAD worker — audio lookahead'i tüketir, boşlukları gap_queue'ya basar."""
-    log.info("VAD worker başlıyor (lookahead=%.1fs, realtime=%s)", 
-             config.AUDIO_LOOKAHEAD_SEC, realtime)
+    log.info("VAD worker başlıyor (lookahead=%.1fs)", config.AUDIO_LOOKAHEAD_SEC)
 
-    # Batch modda tüm videoyu hafızada tutabiliriz (max 1 saatlik video için ~3600sn)
-    history_sec = 3600.0 if not realtime else 300.0
-    frame_hist = FrameHistory(max_age_sec=history_sec)
+    audio_buf = AudioRingBuffer(config.VAD_BUFFER_SEC, config.AUDIO_SAMPLE_RATE)
+    frame_hist = FrameHistory(max_age_sec=300.0)
 
     # Daha önce GapItem üretilmiş boşlukları tekrar üretme
     # (audio buffer kayarken aynı boşluğu yeniden görebiliriz)
