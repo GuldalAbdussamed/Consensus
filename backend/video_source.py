@@ -225,8 +225,8 @@ async def _frame_publisher(
             if realtime and ahead > 0.005:
                 await asyncio.sleep(ahead)
 
-            # Queue full ise eskiyi at (canlı sistem, geride kalmış frame değersiz)
-            if frame_queue.full():
+            # Queue full ise eskiyi at (canlı sistem, sadece realtime modda)
+            if realtime and frame_queue.full():
                 try:
                     frame_queue.get_nowait()
                 except asyncio.QueueEmpty:
@@ -235,7 +235,7 @@ async def _frame_publisher(
             await frame_queue.put(FrameItem(
                 wall_time=time.time(),
                 video_time=video_time,
-                image=frame,
+                image=frame.copy(),
             ))
             frame_idx += 1
     finally:
