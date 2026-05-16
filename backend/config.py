@@ -8,6 +8,10 @@ Hackathon temposunda eşikleri sürekli oynayacağız. Burası tek doğruluk kay
 # Servis URL'leri
 # ============================================================
 
+# API Sunucusu (kendi)
+API_HOST = "0.0.0.0"
+API_PORT = 8000
+
 # vLLM (Qwen2.5-VL) sunucusu — AWS L40S
 VLLM_URL = "http://ec2-3-145-206-228.us-east-2.compute.amazonaws.com:8000/v1"
 VLLM_MODEL = "Qwen/Qwen2.5-VL-7B-Instruct-AWQ"

@@ -11,6 +11,7 @@ Kullanım:
 """
 
 import asyncio
+import contextlib
 import logging
 import shutil
 import tempfile
@@ -35,11 +36,25 @@ logging.basicConfig(
 )
 log = logging.getLogger("api_server")
 
+# ── Lifespan ─────────────────────────────────────────────
+@contextlib.asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    yield
+    # Shutdown
+    if WORK_DIR.exists():
+        try:
+            shutil.rmtree(WORK_DIR)
+            log.info("Geçici dizin temizlendi: %s", WORK_DIR)
+        except Exception as e:
+            log.warning("Temizlik hatası: %s", e)
+
 # ── FastAPI ──────────────────────────────────────────────
 app = FastAPI(
     title="Engelsiz TV API",
     description="Video yükle → sesli betimleme ekle → işlenmiş videoyu indir",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -181,21 +196,10 @@ else:
     log.warning("Frontend dizini bulunamadı: %s", FRONTEND_DIR)
 
 
-@app.on_event("shutdown")
-def cleanup():
-    """Sunucu kapanırken geçici dosyaları temizle."""
-    if WORK_DIR.exists():
-        try:
-            shutil.rmtree(WORK_DIR)
-            log.info("Geçici dizin temizlendi: %s", WORK_DIR)
-        except Exception as e:
-            log.warning("Temizlik hatası: %s", e)
-
-
 if __name__ == "__main__":
     uvicorn.run(
         "api_server:app",
-        host="0.0.0.0",
-        port=80,
+        host=config.API_HOST,
+        port=config.API_PORT,
         log_level="info",
     )
