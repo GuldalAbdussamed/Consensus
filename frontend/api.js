@@ -1,4 +1,4 @@
-const BASE = 'http://0.0.0.0:8000'; 
+const BASE = `http://${window.location.hostname}:8000`; 
 
 async function checkHealth() {
     try {
