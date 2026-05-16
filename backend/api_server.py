@@ -22,6 +22,7 @@ import uvicorn
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 import config
 from pipeline_batch import process_video
@@ -171,6 +172,15 @@ async def test_endpoint(video: UploadFile = File(...)):
         pass
 
 
+# ── Frontend Statik Dosyalar ─────────────────────────────
+# backend/ dizinindeyiz, frontend/ bir üst dizinde
+FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
+if FRONTEND_DIR.exists():
+    app.mount("/", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="frontend")
+else:
+    log.warning("Frontend dizini bulunamadı: %s", FRONTEND_DIR)
+
+
 @app.on_event("shutdown")
 def cleanup():
     """Sunucu kapanırken geçici dosyaları temizle."""
@@ -186,6 +196,6 @@ if __name__ == "__main__":
     uvicorn.run(
         "api_server:app",
         host="0.0.0.0",
-        port=8080,
+        port=80,
         log_level="info",
     )

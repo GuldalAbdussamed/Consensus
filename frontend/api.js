@@ -1,8 +1,9 @@
-const API_BASE_URL = `http://${window.location.hostname}:8080`;
+// Backend ve Frontend aynı porttan (80) servis edildiği için relative path kullanıyoruz.
+const BASE = ''; 
 
 async function checkHealth() {
     try {
-        const response = await fetch(`${API_BASE_URL}/health`);
+        const response = await fetch(`${BASE}/health`);
         if (!response.ok) throw new Error('Backend yanıt vermedi');
         return await response.json();
     } catch (error) {
@@ -46,7 +47,7 @@ async function uploadVideo(file, onProgress) {
         xhr.onerror = () => reject(new Error('Bağlantı hatası'));
         xhr.ontimeout = () => reject(new Error('Zaman aşımı'));
 
-        xhr.open('POST', `${API_BASE_URL}/test`);
+        xhr.open('POST', `${BASE}/test`);
         xhr.responseType = 'blob';
         xhr.timeout = 600000;
         xhr.send(formData);
