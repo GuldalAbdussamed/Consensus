@@ -122,8 +122,11 @@ Engelsiz TV’nin tipik bir kullanım senaryosu, canlı veya önceden kaydedilmi
 
 ## Ekran Görüntüleri
 
-![Ekran Görüntüsü 1](image/2.jpeg)
-![Ekran Görüntüsü 2](image/3.jpeg)
+### Video Betimleme Aracı
+![Video Betimleme Aracı](image/2.jpeg)
+
+### Hakkımızda
+![Hakkımızda](image/3.jpeg)
 
 ## Ekip Üyeleri
 
