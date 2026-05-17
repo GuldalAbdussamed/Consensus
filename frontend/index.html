@@ -4,11 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Engelsiz TV — Yapay Zeka Destekli Sesli Betimleme</title>
-    <meta name="description" content="Engelsiz TV, görme engelli bireyler için canlı yayınlara gerçek zamanlı yapay zeka destekli sesli betimleme sunar.">
+    <meta name="description" content="Engelsiz TV, görme engelli bireyler için video içeriklere yapay zeka destekli sesli betimleme ekler.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <script>document.documentElement.setAttribute('data-theme',localStorage.getItem('engelsiz-theme')||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'))</script>
 </head>
 <body>
 
@@ -25,62 +26,68 @@
             </div>
             <span class="logo-text">Engelsiz <span class="logo-accent">TV</span></span>
         </a>
-        <div class="nav-links">
+
+        <button class="hamburger" id="hamburger-btn" aria-label="Menüyü aç">
+            <span></span><span></span><span></span>
+        </button>
+
+        <div class="nav-links" id="nav-links">
             <a href="index.html" class="nav-link active">Ana Sayfa</a>
-            <a href="demo.html" class="nav-link">Canlı Demo</a>
-            <a href="partners.html" class="nav-link">Paydaşlar</a>
+            <a href="demo.html" class="nav-link">Demo</a>
+            <a href="about.html" class="nav-link">Hakkımızda</a>
         </div>
-        <a href="demo.html" class="nav-cta">Demo'yu İzle</a>
+
+        <button class="theme-toggle" id="theme-toggle" aria-label="Tema değiştir">
+            <span id="theme-icon">🌙</span>
+        </button>
     </div>
 </nav>
 
 <!-- =================== HERO =================== -->
 <section class="hero">
     <div class="hero-content">
-        <div class="hero-badge">Gerçek Zamanlı Yapay Zeka</div>
+        <div class="hero-badge">Herkes için erişilebilir yayıncılık</div>
         <h1 class="hero-title">
             Televizyon artık<br>
             <span class="title-accent">herkes için</span> konuşuyor
         </h1>
         <p class="hero-subtitle">
-            Görme engelli bireyler için canlı TV yayınlarındaki her sahneyi anlayan ve saniyenin altında gecikmeyle anlık sesli betimlemelere dönüştüren yapay zeka altyapısı.
+            Görme engelli bireyler için video içeriklerdeki her sahneyi anlayan ve saniyenin altında gecikmeyle sesli betimlemelere dönüştüren yapay zeka altyapısı.
         </p>
         <div class="hero-actions">
             <a href="demo.html" class="btn-primary large">Canlı Demo İzle</a>
             <a href="#how" class="btn-secondary large">Nasıl Çalışır?</a>
         </div>
-        
         <div class="hero-stats">
             <div class="stat">
-                <span class="stat-num">400ms</span>
+                <span class="stat-num font-mono">400ms</span>
                 <span class="stat-label">Ortalama Gecikme</span>
             </div>
             <div class="stat">
-                <span class="stat-num">7B</span>
+                <span class="stat-num font-mono">7B</span>
                 <span class="stat-label">Parametre VLM</span>
             </div>
             <div class="stat">
-                <span class="stat-num">%100</span>
+                <span class="stat-num font-mono">%100</span>
                 <span class="stat-label">Yerli Altyapı</span>
             </div>
         </div>
     </div>
 
-    <!-- Clean UI Representation -->
     <div class="hero-visual">
         <div class="ui-mockup">
             <div class="ui-header">
                 <div class="ui-dots">
                     <div class="ui-dot"></div><div class="ui-dot"></div><div class="ui-dot"></div>
                 </div>
-                <span style="font-size: 0.75rem; color: var(--text-tertiary); font-weight: 500;">engelsiz.tv/live</span>
+                <span class="ui-header-url">engelsiz.tv/live</span>
             </div>
             <div class="ui-body">
                 <div class="ui-video">
                     <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--border-dark)" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><line x1="2" y1="7" x2="7" y2="7"></line><line x1="2" y1="17" x2="7" y2="17"></line><line x1="17" y1="17" x2="22" y2="17"></line><line x1="17" y1="7" x2="22" y2="7"></line></svg>
                 </div>
                 <div class="ui-desc">
-                    🔊 "Ekranda iki kişi masa başında oturuyor, önlerindeki belgeleri inceliyorlar..."
+                    "<span id="bubble-text">Ekranda iki kişi masa başında oturuyor, önlerindeki belgeleri inceliyorlar...</span>"
                 </div>
             </div>
         </div>
@@ -90,39 +97,42 @@
 <!-- =================== HOW IT WORKS =================== -->
 <section class="how-section" id="how">
     <div class="section-inner">
-        <div class="section-header">
-            <span class="section-tag">Teknoloji</span>
+        <div class="section-header fade-in">
             <h2>Akıllı Pipeline Mimarisi</h2>
-            <p>Canlı yayınlara entegre edilebilen, olay güdümlü asenkron işleme mimarisi.</p>
+            <p>Video içeriklere sesli betimleme ekleyen olay güdümlü asenkron işleme mimarisi.</p>
         </div>
         <div class="pipeline-list">
-            <div class="pipeline-card">
+            <div class="pipeline-card fade-in fade-in-delay-1">
+                <span class="step-number">1</span>
                 <div class="step-icon">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                 </div>
-                <h3>1. Video Kaynağı</h3>
-                <p>Canlı akıştan anlık frame'ler ve ses dalgaları ayrıştırılır.</p>
+                <h3>Video Kaynağı</h3>
+                <p>Videodan anlık frame'ler ve ses dalgaları ayrıştırılır.</p>
             </div>
-            <div class="pipeline-card">
+            <div class="pipeline-card fade-in fade-in-delay-2">
+                <span class="step-number">2</span>
                 <div class="step-icon">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M9 9h6M9 12h6M9 15h4"/></svg>
+                    <svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
                 </div>
-                <h3>2. VAD Analizi</h3>
+                <h3>VAD Analizi</h3>
                 <p>Silero ile milisaniye hassasiyetinde konuşma ve sessizlik anları tespit edilir.</p>
             </div>
-            <div class="pipeline-card">
+            <div class="pipeline-card fade-in fade-in-delay-2">
+                <span class="step-number">3</span>
                 <div class="step-icon">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+                    <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 </div>
-                <h3>3. VLM Betimleme</h3>
+                <h3>VLM Betimleme</h3>
                 <p>Qwen2.5-VL modeli sessizlik anlarında sahneleri analiz edip metne çevirir.</p>
             </div>
-            <div class="pipeline-card">
+            <div class="pipeline-card fade-in fade-in-delay-3">
+                <span class="step-number">4</span>
                 <div class="step-icon">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 18.5a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13z"/><path d="M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/></svg>
+                    <svg viewBox="0 0 24 24"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg>
                 </div>
-                <h3>4. Dinamik Miksaj</h3>
-                <p>Oluşturulan betimleme XTTS-v2 ile sese dönüştürülüp, ducking yöntemiyle yayına entegre edilir.</p>
+                <h3>Dinamik Miksaj</h3>
+                <p>Oluşturulan betimleme XTTS-v2 ile sese dönüştürülüp, ducking yöntemiyle entegre edilir.</p>
             </div>
         </div>
     </div>
@@ -131,51 +141,47 @@
 <!-- =================== FEATURES =================== -->
 <section class="features-section">
     <div class="section-inner">
-        <div class="section-header">
-            <span class="section-tag">Özellikler</span>
+        <div class="section-header fade-in">
             <h2>Neden Engelsiz TV?</h2>
             <p>Görme engelliler için optimize edilmiş kesintisiz bir izleme deneyimi.</p>
         </div>
         <div class="features-grid">
-            <div class="feature-item">
-                <div class="feature-icon">⚡</div>
+            <div class="feature-item fade-in">
+                <div class="feature-icon">
+                    <svg viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                </div>
                 <div class="feature-content">
                     <h3>Gerçek Zamanlı Uyum</h3>
                     <p>Yayın boşlukları kaçırılmadan anında doldurulur. Sahne değişimleri ile senkronize ilerler.</p>
                 </div>
             </div>
-            <div class="feature-item">
-                <div class="feature-icon">🇹🇷</div>
+            <div class="feature-item fade-in">
+                <div class="feature-icon">
+                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                </div>
                 <div class="feature-content">
                     <h3>Tamamen Türkçe Destek</h3>
                     <p>Hem VLM hem de TTS modelleri Türkçe dil yapısına ve tonlamasına mükemmel uyum sağlar.</p>
                 </div>
             </div>
-            <div class="feature-item">
-                <div class="feature-icon">🧠</div>
+            <div class="feature-item fade-in">
+                <div class="feature-icon">
+                    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                </div>
                 <div class="feature-content">
                     <h3>Bağlam Farkındalığı</h3>
                     <p>Sistem önceki betimlemeleri hatırlar. Sahnede bir değişiklik olmadıkça tekrara düşmez.</p>
                 </div>
             </div>
-            <div class="feature-item">
-                <div class="feature-icon">🔌</div>
+            <div class="feature-item fade-in">
+                <div class="feature-icon">
+                    <svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                </div>
                 <div class="feature-content">
                     <h3>Kolay Entegrasyon</h3>
                     <p>Mevcut yayıncı altyapılarına API veya HLS/RTSP stream seviyesinde zahmetsizce entegre olur.</p>
                 </div>
             </div>
-        </div>
-    </div>
-</section>
-
-<!-- =================== CTA =================== -->
-<section class="cta-section">
-    <div class="section-inner">
-        <div class="cta-box">
-            <h2>Sistemi Canlı Görün</h2>
-            <p>Demo sayfamızda kendi videolarınızı yükleyin ve pipeline'ın her adımını izleyin.</p>
-            <a href="demo.html" class="btn-primary large">Canlı Demoya Git</a>
         </div>
     </div>
 </section>
@@ -188,22 +194,16 @@
                 <rect width="32" height="32" rx="8" fill="currentColor"/>
                 <path d="M16 8C11.5 8 8 12 8 16C8 20 11.5 24 16 24C20.5 24 24 20 24 16C24 12 20.5 8 16 8Z" stroke="white" stroke-width="2" fill="none"/>
             </svg>
-            <span style="font-weight: 600; color: var(--text-primary);">Engelsiz TV</span>
+            <span class="footer-logo-text">Engelsiz TV</span>
         </div>
         <p class="footer-copy">© 2026 Engelsiz TV. Tüm hakları saklıdır.</p>
         <div class="footer-links">
-            <a href="partners.html">Paydaşlar</a>
-            <a href="demo.html">Canlı Demo</a>
+            <a href="about.html">Hakkımızda</a>
+            <a href="demo.html">Demo</a>
         </div>
     </div>
 </footer>
 
-<script>
-    window.addEventListener('scroll', () => {
-        const nav = document.getElementById('navbar');
-        if (window.scrollY > 20) nav.classList.add('scrolled');
-        else nav.classList.remove('scrolled');
-    });
-</script>
+<script src="main.js"></script>
 </body>
 </html>

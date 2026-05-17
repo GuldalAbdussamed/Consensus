@@ -3,12 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Canlı Demo — Engelsiz TV</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>Demo — Engelsiz TV</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <script>document.documentElement.setAttribute('data-theme',localStorage.getItem('engelsiz-theme')||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'))</script>
 </head>
 <body>
 
+<!-- =================== NAVBAR =================== -->
 <nav class="navbar" id="navbar">
     <div class="nav-inner">
         <a href="index.html" class="nav-logo">
@@ -21,118 +25,109 @@
             </div>
             <span class="logo-text">Engelsiz <span class="logo-accent">TV</span></span>
         </a>
-        <div class="nav-links">
+
+        <button class="hamburger" id="hamburger-btn" aria-label="Menüyü aç">
+            <span></span><span></span><span></span>
+        </button>
+
+        <div class="nav-links" id="nav-links">
             <a href="index.html" class="nav-link">Ana Sayfa</a>
-            <a href="demo.html" class="nav-link active">Canlı Demo</a>
-            <a href="partners.html" class="nav-link">Paydaşlar</a>
+            <a href="demo.html" class="nav-link active">Demo</a>
+            <a href="about.html" class="nav-link">Hakkımızda</a>
         </div>
+
+        <button class="theme-toggle" id="theme-toggle" aria-label="Tema değiştir">
+            <span id="theme-icon">🌙</span>
+        </button>
     </div>
 </nav>
 
+<!-- =================== DEMO =================== -->
 <main class="demo-page">
     <div class="demo-header">
-        <h1>Video Betimleme Aracı</h1>
-        <p>Videonuzu yükleyin, yapay zeka altyapımızın saniyeler içinde sesli betimleme eklemesini izleyin.</p>
+        <div class="demo-header-text">
+            <h1>Video Betimleme Aracı</h1>
+            <p>Videonuzu yükleyin, yapay zeka saniyeler içinde sesli betimleme eklesin.</p>
+        </div>
+        <div class="backend-status" id="backend-status">
+            <span class="status-dot" id="backend-dot"></span>
+            <span id="backend-text">Kontrol ediliyor...</span>
+        </div>
     </div>
 
     <div class="demo-layout">
-        <!-- Left Column: Video Area -->
-        <div class="panel">
-            <div class="panel-header">
-                <span class="panel-title">Video Önizleme</span>
-                <span id="backend-status" class="status-msg info">Backend: Kontrol ediliyor...</span>
-            </div>
-            
-            <div class="video-area">
-                <input type="file" id="video-input" class="hidden" accept="video/mp4,video/x-m4v,video/*">
-                
-                <div class="video-placeholder" id="video-placeholder">
-                    <div class="video-icon" id="video-icon">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><line x1="2" y1="7" x2="7" y2="7"></line><line x1="2" y1="17" x2="7" y2="17"></line><line x1="17" y1="17" x2="22" y2="17"></line><line x1="17" y1="7" x2="22" y2="7"></line></svg>
-                    </div>
-                    <span class="video-text" id="video-status-text">Video Yüklemek İçin Tıklayın veya Sürükleyin</span>
-                    <span class="upload-hint">MP4, MKV, AVI, MOV, WEBM (Maks. 500MB)</span>
+        <!-- Input Tabs -->
+        <div class="input-tabs">
+            <button class="input-tab active" id="tab-file">Dosya Yükle</button>
+            <button class="input-tab" disabled title="Yakında">URL ile Çek</button>
+            <button class="input-tab" disabled title="Yakında">Kamera</button>
+        </div>
+
+        <!-- Video Container -->
+        <div class="video-container" id="video-container">
+            <input type="file" id="video-input" class="hidden" accept="video/mp4,video/x-m4v,video/*">
+
+            <div class="video-placeholder" id="video-placeholder">
+                <div class="video-icon" id="video-icon">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><line x1="2" y1="7" x2="7" y2="7"></line><line x1="2" y1="17" x2="7" y2="17"></line><line x1="17" y1="17" x2="22" y2="17"></line><line x1="17" y1="7" x2="22" y2="7"></line></svg>
                 </div>
-                
-                <video class="video-player hidden" id="video-player" controls controlsList="nodownload"></video>
+                <span class="video-text" id="video-status-text">Video Yüklemek İçin Tıklayın veya Sürükleyin</span>
+                <span class="upload-hint">MP4, MKV, AVI, MOV, WEBM (Maks. 500MB)</span>
             </div>
 
-            <div class="progress-container hidden" id="upload-progress-container">
-                <div class="progress-header">
-                    <span class="progress-label">Yükleniyor...</span>
-                    <span class="progress-percent" id="upload-percent">0%</span>
-                </div>
-                <div class="progress-track">
-                    <div class="progress-fill" id="upload-progress"></div>
-                </div>
-            </div>
+            <video class="video-player hidden" id="video-player" controls></video>
+            <div class="subtitle-overlay hidden" id="subtitle-overlay"></div>
+        </div>
 
-            <div class="controls-area">
-                <button class="btn-secondary" id="upload-btn" onclick="triggerUpload()">Farklı Video Seç</button>
-                <button class="btn-primary" id="process-btn" onclick="processVideo()" disabled>İşlemi Başlat</button>
-                <button class="btn-primary" id="download-btn" onclick="downloadResult()" disabled>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                    Sonucu İndir
+        <!-- Progress Bar (thin) -->
+        <div class="progress-thin hidden" id="process-progress">
+            <div class="progress-thin-fill" id="process-progress-fill"></div>
+        </div>
+        <div class="progress-info hidden" id="progress-info">
+            <span id="progress-status-text">İşleniyor...</span>
+            <span id="progress-percent">0%</span>
+        </div>
+
+        <!-- Controls -->
+        <div class="demo-controls">
+            <button class="btn-secondary" id="upload-btn" onclick="triggerUpload()">Farklı Video Seç</button>
+            <button class="btn-primary" id="process-btn" onclick="processVideo()" disabled>İşlemi Başlat</button>
+
+            <div class="controls-right">
+                <button class="btn-icon" id="download-btn" title="Videoyu İndir" aria-label="Videoyu indir" disabled onclick="downloadResult()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                 </button>
-                <span id="status-message" class="status-msg"></span>
+                <div class="settings-wrapper">
+                    <button class="btn-icon" id="settings-btn" title="Ayarlar" aria-label="Ayarlar" onclick="toggleSettings()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    </button>
+                    <div class="settings-popover hidden" id="settings-popover">
+                        <div class="setting-row">
+                            <span class="setting-label">Altyazı Göster</span>
+                            <button class="toggle" id="subtitle-toggle" onclick="toggleSubtitles()" aria-label="Altyazı aç/kapa"></button>
+                        </div>
+                        <div class="setting-row">
+                            <span class="setting-label">Yazı Boyutu</span>
+                            <div class="font-size-controls">
+                                <button class="font-size-btn" onclick="setSubtitleSize('small', this)" aria-label="Küçük yazı">A-</button>
+                                <button class="font-size-btn active" onclick="setSubtitleSize('medium', this)" aria-label="Orta yazı">A</button>
+                                <button class="font-size-btn" onclick="setSubtitleSize('large', this)" aria-label="Büyük yazı">A+</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- Right Column: Status & Feed -->
-        <div>
-            <div class="panel">
-                <div class="panel-header">
-                    <span class="panel-title">Pipeline Durumu</span>
-                </div>
-                <div class="pipeline-steps">
-                    <div class="pipe-step" id="step-vad">
-                        <div class="pipe-info">
-                            <span class="pipe-icon">🎙️</span>
-                            <span class="pipe-name">VAD (Ses Analizi)</span>
-                        </div>
-                        <span class="pipe-badge badge-idle" id="badge-vad">Bekliyor</span>
-                    </div>
-                    <div class="pipe-step" id="step-vlm">
-                        <div class="pipe-info">
-                            <span class="pipe-icon">🧠</span>
-                            <span class="pipe-name">VLM (Görüntü İşleme)</span>
-                        </div>
-                        <span class="pipe-badge badge-idle" id="badge-vlm">Bekliyor</span>
-                    </div>
-                    <div class="pipe-step" id="step-tts">
-                        <div class="pipe-info">
-                            <span class="pipe-icon">🔊</span>
-                            <span class="pipe-name">TTS (Ses Sentezi)</span>
-                        </div>
-                        <span class="pipe-badge badge-idle" id="badge-tts">Bekliyor</span>
-                    </div>
-                    <div class="pipe-step" id="step-mixer">
-                        <div class="pipe-info">
-                            <span class="pipe-icon">🎧</span>
-                            <span class="pipe-name">Ses Miksajı</span>
-                        </div>
-                        <span class="pipe-badge badge-idle" id="badge-mixer">Bekliyor</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="panel">
-                <div class="panel-header">
-                    <span class="panel-title">Canlı Betimleme Akışı</span>
-                    <span id="desc-count" style="font-size: 0.875rem; color: var(--text-tertiary);">0 betimleme</span>
-                </div>
-                <div class="desc-feed" id="desc-feed">
-                    <div class="desc-empty">
-                        <div style="font-size: 2rem;">📝</div>
-                        <p>Video işlenirken oluşturulan betimlemeler<br>burada canlı olarak akacaktır.</p>
-                    </div>
-                </div>
-            </div>
+        <!-- Status -->
+        <div class="demo-status">
+            <span id="status-message" class="status-msg"></span>
         </div>
     </div>
 </main>
 
 <script src="api.js"></script>
 <script src="demo.js"></script>
+<script src="main.js"></script>
 </body>
 </html>
