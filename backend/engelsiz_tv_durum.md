@@ -52,7 +52,7 @@ Video kaynak (mp4 dosyası, "canlı" simüle)
 ## Teknik Detaylar
 
 ### vLLM Endpoint
-- URL: `http://ec2-3-145-206-228.us-east-2.compute.amazonaws.com:8000/v1`
+- URL: `VLLM_URL (bkz. config.py)`
 - Model: `Qwen/Qwen2.5-VL-7B-Instruct-AWQ`
 - Çağrı süresi: ~400-1500ms (3 kareli pencere ile)
 - AWS sunucusu: NVIDIA L40S, 46GB VRAM (bol bol yer var)

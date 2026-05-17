@@ -1,109 +1,117 @@
-# 👁️👂 Engelsiz TV
+# Engelsiz TV - Yapay Zeka Destekli Erişilebilirlik Platformu
 
-**Engelsiz TV**, televizyon yayınlarını ve video içeriklerini herkes için erişilebilir kılmayı amaçlayan, yapay zeka destekli bir erişilebilirlik platformudur. Görme engelliler için canlı sesli betimleme, işitme engelliler için ise eşzamanlı 3D işaret dili çevirisi sunar.
+Engelsiz TV, televizyon yayınlarını ve video içeriklerini herkes için erişilebilir kılmayı amaçlayan, yapay zeka tabanlı bir erişilebilirlik çözümüdür. Sistem, özellikle görme engelli bireyler için gerçek zamanlı sesli betimleme (audio description) ve işitme engelli bireyler için 3D işaret dili çevirisi sunarak medya içeriklerine erişimi kolaylaştırır.
 
----
+## Proje Amacı ve Kapsamı
 
-## 🎯 Projenin Amacı ve Vizyonu
+Dünya genelinde ve Türkiye'de milyonlarca görme ve işitme engelli birey, televizyon ve dijital içeriklerdeki görsel/işitsel bilgi eksikliği nedeniyle içerikleri tam olarak takip edememektedir. Engelsiz TV, bu boşluğu doldurmak amacıyla aşağıdaki otonom çözümleri sunar:
 
-Türkiye'de yaklaşık 700.000 görme engelli ve 3.5 milyondan fazla işitme engelli birey yaşamaktadır. Televizyon kanallarındaki ve dijital platformlardaki içeriklerin çok büyük bir kısmında sesli betimleme veya işaret dili çevirisi bulunmamaktadır.
+- **Otonom Sesli Betimleme:** Videodaki konuşma boşluklarını tespit eder, sahneyi analiz eder ve doğal bir sesle olayları açıklar.
+- **3D İşaret Dili Avatarı:** Konuşmaları anlık olarak işaret dili gramerine çevirerek görsel bir avatar aracılığıyla yansıtır.
+- **Gerçek Zamanlı İşleme:** Canlı yayın akışlarına (HLS/RTSP) entegre olabilen düşük gecikmeli mimari.
 
-**Engelsiz TV'nin amacı:**
-Yapay zeka (VLM, TTS, STT) ve 3D teknolojilerini kullanarak, herhangi bir video yayınına anında, tamamen otonom ve gerçek zamanlı olarak erişilebilirlik katmanları (sesli betimleme ve işaret dili) eklemektir. Hedefimiz 7/24 kesintisiz, sıfır insan müdahalesi gerektiren "Herkes için televizyon" deneyimini yaratmaktır.
+## Temel Özellikler
 
----
+- **Görsel Dil Modeli (VLM) Entegrasyonu:** Qwen2.5-VL-7B modeli kullanılarak saniyenin altında sahne analizi gerçekleştirilir.
+- **Konuşma Boşluğu Tespiti (VAD):** Silero VAD teknolojisi ile diyaloglar arasındaki sessizlikler milisaniyelik hassasiyetle tespit edilir.
+- **Doğal Ses Sentezi (TTS):** XTTS-v2 modeli ile bağlama uygun, kaliteli Türkçe sesli betimlemeler üretilir.
+- **Ses Karıştırma ve Ducking:** Betimleme sırasında orijinal video sesi otomatik olarak alçaltılır (ducking) ve betimleme sonrası kademeli olarak yükseltilir.
+- **Sahne Farkındalığı:** HSV histogram analizi ile kamera açısı değişimleri takip edilir ve gereksiz betimleme tekrarları önlenir.
 
-## 🚀 Özellikler
+## Kullanılan Teknolojiler
 
-- **Gerçek Zamanlı Sesli Betimleme:** Silero VAD ile konuşma boşlukları (sessizlikler) tespit edilir ve Qwen2.5-VL-7B görsel dil modeli ile sahnedeki olaylar saniyenin altında analiz edilerek XTTS-v2 ile seslendirilir.
-- **İşaret Dili Avatarı:** Konuşmaların olduğu anlarda, arka planda çalışan yapay zeka metni alır, İşaret Dili gramerine (Gloss) çevirir ve Three.js altyapılı 3D Avatar (RobotExpressive) üzerinden görsel olarak ekrana yansıtır.
-- **Canlı Yayın Entegrasyonu:** HLS/RTSP gibi yayın akışlarına doğrudan bağlanıp aracı bir mikser olarak çalışabilme kapasitesi.
-- **Bağlam Farkındalığı:** Sahne analizlerinde önceki betimlemeleri hafızasında tutarak gereksiz tekrarları önler.
+### Backend (AI ve Veri İşleme)
+- **Dil:** Python 3.9+
+- **Framework:** FastAPI (API Sunucusu), AsyncIO (Asenkron İşleme)
+- **AI Modelleri:** 
+    - vLLM (Qwen2.5-VL-7B-Instruct-AWQ)
+    - Coqui XTTS-v2
+    - Silero VAD
+- **Kütüphaneler:** OpenCV, NumPy, PyTorch, Librosa, Pydub
 
----
+### Frontend (Kullanıcı Arayüzü ve 3D)
+- **Web:** Vanilla HTML5, CSS3, JavaScript
+- **3D Motoru:** Three.js (RobotExpressive avatar altyapısı)
+- **Araçlar:** Vite (Geliştirme ve Build)
 
-## 🛠 Kullanılan Teknolojiler
+## Sistem Mimarisi
 
-### Backend (Görsel ve İşitsel AI Motoru)
-- **Dil ve Ortam:** Python 3.9+, AsyncIO
-- **VLM (Görsel Dil Modeli):** Qwen2.5-VL-7B-Instruct-AWQ (NVIDIA L40S GPU üzerinde vLLM ile çalışır)
-- **TTS (Metinden Sese):** XTTS-v2 (Coqui) - Türkçe ve klonlama destekli
-- **VAD (Ses Aktivite Tespiti):** Silero VAD
-- **Görüntü İşleme:** OpenCV (Kamera açısı geçişleri ve histogram analizi için)
+Sistem, olay güdümlü (event-driven) bir asenkron pipeline üzerinde çalışır:
+1. **Giriş:** Video akışı üzerinden ses ve görüntü kareleri eşzamanlı olarak okunur.
+2. **Analiz:** VAD worker'ı konuşma boşluklarını yakalar.
+3. **Betimleme:** Boşluk yakalandığında, o ana ait video kareleri VLM'e gönderilir ve açıklama metni üretilir.
+4. **Sentez:** Üretilen metin TTS sunucusu üzerinden sese dönüştürülür.
+5. **Çıkış:** Mixer modülü, orijinal ses ile betimleme sesini birleştirerek kullanıcıya sunar.
 
-### Frontend (UI ve 3D Avatar)
-- **Web Teknolojileri:** Vanilla HTML5, CSS3, JavaScript
-- **3D Render Motoru:** Three.js (Tarayıcı tabanlı, hızlı çalışan 3D altyapı)
-- **Animasyon:** GLTFLoader ve Three.js AnimationMixer
+## Kurulum ve Yapılandırma
 
----
+### Backend Kurulumu
 
-## ⚙️ Kurulum Talimatları
+1. Bağımlılıkları yükleyin:
+   ```bash
+   cd backend
+   pip install -r requirements.txt
+   ```
+2. `.env` dosyasını oluşturun:
+   `.env.example` dosyasını `.env` olarak kopyalayın ve gerekli URL'leri tanımlayın.
 
-Proje iki ana modülden oluşmaktadır: AI Motoru (Backend) ve Web Arayüzü/Avatar (Frontend).
+### Frontend Kurulumu
 
-### 1. Backend Kurulumu (Python)
+1. Bağımlılıkları yükleyin:
+   ```bash
+   cd frontend
+   npm install
+   ```
+2. Geliştirme sunucusunu başlatın:
+   ```bash
+   npm run dev
+   ```
 
+### Alternatif Başlatma (Statik Sunucu)
+
+Node.js yüklü olmayan ortamlarda veya hızlı bir test için Python üzerinden statik bir sunucu başlatabilirsiniz:
 ```bash
-# Proje dizinine gidin
-cd backend
-
-# Gerekli bağımlılıkları yükleyin
-pip install -r requirements.txt
-
-# (Opsiyonel) Eğer VLLM ve XTTS sunucularını lokalde çalıştıracaksanız, 
-# kendi GPU ortamınıza uygun torch ve vllm sürümlerini kurmalısınız.
-```
-
-### 2. Frontend Kurulumu (Web & 3D)
-
-Frontend kısmı herhangi bir build aracı (npm vb.) gerektirmez. Doğrudan tarayıcıda çalışabilir.
-
-```bash
-# Frontend dizinine gidin
 cd frontend
-
-# Yerel bir Python sunucusu başlatarak anında test edebilirsiniz
-python3 -m http.server 8000
+python -m http.server 8000
 ```
-Ardından tarayıcınızda `http://localhost:8000` adresine giderek arayüzü görebilirsiniz.
+Not: 3D avatar ve diğer gelişmiş özelliklerin tam performanslı çalışması için Vite (npm run dev) kullanımı önerilir.
 
----
+## Yapılandırma (.env)
 
-## 📖 Kullanım Kılavuzu
+Projenin çalışması için gerekli çevresel değişkenler:
+- `VLLM_URL`: Qwen2.5-VL sunucusunun API adresi.
+- `TTS_URL`: XTTS-v2 sunucusunun adresi.
+- `VLLM_API_KEY`: Model sunucusu için gerekli API anahtarı (opsiyonel).
+- `LOG_LEVEL`: Uygulama loglama seviyesi (DEBUG, INFO, ERROR).
 
-### Sesli Betimleme Pipeline'ını Başlatma (Backend)
+## Kullanım Kılavuzu
 
-Terminal üzerinden örnek bir video dosyasını işlemek için:
-
+### API Üzerinden Video İşleme
+Backend sunucusunu başlatın:
 ```bash
 cd backend
-python3 main.py --video samples/video1.mp4
+python api_server.py
+```
+Sunucu varsayılan olarak `8080` portunda çalışacaktır. `/upload` endpoint'i üzerinden video yükleyerek işleme sürecini başlatabilirsiniz.
+
+### Manuel Test
+Terminal üzerinden bir video dosyasını doğrudan işlemek için:
+```bash
+python main.py --video video_yolu.mp4
 ```
 
-**Parametreler:**
-- `--debug`: Kuyruk (queue) ve monitör loglarını terminalde detaylı görmek için ekleyebilirsiniz.
-- `--mock-tts`: TTS sunucusuna bağlanmak yerine sesi simüle etmek (offline test) için kullanabilirsiniz.
-- `--output-wav <dosya.wav>`: Çıktıyı doğrudan bilgisayar hoparlörüne vermek yerine bir WAV dosyasına kaydetmek için.
+## Ekip Üyeleri
 
-### Web Arayüzünü ve Avatarı Kullanma (Frontend)
-Yerel sunucuyu başlattıktan sonra `http://localhost:8000` adresinde sizi üç ana bölüm karşılar:
-1. **Ana Sayfa:** Projenin vizyonu, teknoloji altyapısı ve özellikleri.
-2. **Canlı Demo:** Gerçek zamanlı AI pipeline'ının (VAD -> VLM -> TTS -> Mixer) nasıl işlediğini adım adım simüle eden ve izlemenizi sağlayan gösterge paneli.
-3. **İşaret Dili Çevirmeni (Avatar):** `index.html` altındaki alanda, test kutucuğuna metin (Örn: "MERHABA", "EVET", "HAYIR", "ZIPLA") yazıp "Oynat" dediğinizde 3D robot karakterinin komutlarınızı anlık olarak işaret dili animasyonuna çevirdiğini test edebilirsiniz.
+- **Abdussamed Güldal** - AI Pipeline & Backend Developer
+- **Ekip Üyesi 2** - Rol/Görev
+- **Ekip Üyesi 3** - Rol/Görev
 
----
+## İş Ortakları ve Destekçiler
 
-## 👥 Ekip Üyeleri
-
-- **Abdussamed Güldal** 
-*(Not: Kendi rolünüzü ve varsa diğer takım arkadaşlarınızın isimlerini buraya ekleyebilirsiniz.)*
+Bu proje aşağıdaki kurumların teknolojik altyapı ve mentorluk destekleriyle geliştirilmiştir:
+- **NVIDIA:** GPU Hızlandırma ve L40S Altyapısı
+- **YTÜ Startup House:** Kuluçka ve Girişimcilik Desteği
+- **Türksat:** Yayın Altyapısı ve Sektörel Danışmanlık
 
 ---
-
-## 🏅 Paydaşlarımız ve Destekçilerimiz
-
-Bu proje alanında lider kurumların desteğiyle hayata geçmektedir:
-- **NVIDIA:** L40S GPU altyapısı ve yapay zeka donanım hızlandırması (CUDA/TensorRT) desteği.
-- **YTÜ Startup House:** Kuluçka, iş geliştirme, ağ ve mentorluk desteği.
-- **Türksat:** Canlı yayın altyapısı (HLS/RTSP) ve ulusal ölçekte entegrasyon danışmanlığı.
+*Not: Bu proje bir hackathon kapsamında geliştirilmiş bir prototiptir.*

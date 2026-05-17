@@ -4,6 +4,10 @@ __pycache__/
 *$py.class
 *.so
 
+# Environment variables
+.env
+.env.local
+
 # Virtual environments
 engelsiz_env/
 venv/
