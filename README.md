@@ -40,6 +40,10 @@ Sistem, olay güdümlü (event-driven) bir asenkron pipeline üzerinde çalış�
 4. **Sentez:** Üretilen metin TTS sunucusu üzerinden sese dönüştürülür.
 5. **Çıkış:** Mixer modülü, orijinal ses ile betimleme sesini birleştirerek kullanıcıya sunar.
 
+## Test Linki 
+
+[Uygulama Linki](http://ec2-18-207-124-53.compute-1.amazonaws.com:3000)
+
 ## Kurulum ve Yapılandırma
 
 ### Backend Kurulumu
