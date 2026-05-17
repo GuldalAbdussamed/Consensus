@@ -296,7 +296,7 @@ async def run(
             audio_item = await asyncio.wait_for(audio_q_lookahead.get(), timeout=0.1)
             if isinstance(audio_item, StreamEnded):
                 audio_done = True
-                log.info("Audio lookahead bitti")
+                log.info("Audio lookahead bitti (reason=%s)", getattr(audio_item, "reason", "unknown"))
             else:
                 await audio_buf.append(audio_item)
                 chunks_since_vad += 1
