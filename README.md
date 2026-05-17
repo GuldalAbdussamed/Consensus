@@ -7,7 +7,6 @@ Engelsiz TV, televizyon yayınlarını ve video içeriklerini herkes için eriş
 Dünya genelinde ve Türkiye'de milyonlarca görme ve işitme engelli birey, televizyon ve dijital içeriklerdeki görsel/işitsel bilgi eksikliği nedeniyle içerikleri tam olarak takip edememektedir. Engelsiz TV, bu boşluğu doldurmak amacıyla aşağıdaki otonom çözümleri sunar:
 
 - **Otonom Sesli Betimleme:** Videodaki konuşma boşluklarını tespit eder, sahneyi analiz eder ve doğal bir sesle olayları açıklar.
-- **3D İşaret Dili Avatarı:** Konuşmaları anlık olarak işaret dili gramerine çevirerek görsel bir avatar aracılığıyla yansıtır.
 - **Gerçek Zamanlı İşleme:** Canlı yayın akışlarına (HLS/RTSP) entegre olabilen düşük gecikmeli mimari.
 
 ## Temel Özellikler
@@ -31,9 +30,7 @@ Dünya genelinde ve Türkiye'de milyonlarca görme ve işitme engelli birey, tel
 
 ### Frontend (Kullanıcı Arayüzü ve 3D)
 - **Web:** Vanilla HTML5, CSS3, JavaScript
-- **3D Motoru:** Three.js (RobotExpressive avatar altyapısı)
-- **Araçlar:** Vite (Geliştirme ve Build)
-
+- 
 ## Sistem Mimarisi
 
 Sistem, olay güdümlü (event-driven) bir asenkron pipeline üzerinde çalışır:
@@ -62,7 +59,6 @@ Node.js yüklü olmayan ortamlarda veya hızlı bir test için Python üzerinden
 cd frontend
 python -m http.server 8000
 ```
-Not: 3D avatar ve diğer gelişmiş özelliklerin tam performanslı çalışması için Vite (npm run dev) kullanımı önerilir.
 
 ## Yapılandırma (.env)
 
