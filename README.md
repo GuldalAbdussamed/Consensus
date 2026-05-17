@@ -1,5 +1,7 @@
 # Engelsiz TV - Yapay Zeka Destekli Erişilebilirlik Platformu
 
+![Engelsiz TV Genel Bakış](image/1.jpeg)
+
 Engelsiz TV, televizyon yayınlarını ve video içeriklerini herkes için erişilebilir kılmayı amaçlayan, yapay zeka tabanlı bir erişilebilirlik çözümüdür. Sistem, özellikle görme engelli bireyler için gerçek zamanlı sesli betimleme (audio description) ve işitme engelli bireyler için 3D işaret dili çevirisi sunarak medya içeriklerine erişimi kolaylaştırır.
 
 ## Proje Amacı ve Kapsamı
@@ -117,6 +119,11 @@ Engelsiz TV’nin tipik bir kullanım senaryosu, canlı veya önceden kaydedilmi
      > “Sunucu haber bülteninde ekonomi gündemini sunuyor, ekranda grafikler gösteriliyor.”
 
 
+
+## Ekran Görüntüleri
+
+![Ekran Görüntüsü 1](image/2.jpeg)
+![Ekran Görüntüsü 2](image/3.jpeg)
 
 ## Ekip Üyeleri
 
