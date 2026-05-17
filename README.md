@@ -30,7 +30,6 @@ Dünya genelinde ve Türkiye'de milyonlarca görme ve işitme engelli birey, tel
 
 ### Frontend (Kullanıcı Arayüzü ve 3D)
 - **Web:** Vanilla HTML5, CSS3, JavaScript
-- 
 ## Sistem Mimarisi
 
 Sistem, olay güdümlü (event-driven) bir asenkron pipeline üzerinde çalışır:
