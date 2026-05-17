@@ -24,7 +24,7 @@ async def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--url",
-        default="http://ec2-3-144-104-180.us-east-2.compute.amazonaws.com:8020",
+        default="http://localhost:8020",
         help="TTS sunucu URL'si",
     )
     parser.add_argument(
