@@ -7,7 +7,7 @@
     <meta name="description" content="Engelsiz TV, görme engelli bireyler için canlı yayınlara gerçek zamanlı yapay zeka destekli sesli betimleme sunar.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -17,12 +17,10 @@
     <div class="nav-inner">
         <a href="index.html" class="nav-logo">
             <div class="logo-icon">
-                <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-                    <rect width="32" height="32" rx="8" fill="#2563eb"/>
+                <svg viewBox="0 0 32 32" fill="none">
+                    <rect width="32" height="32" rx="8" fill="currentColor"/>
                     <path d="M16 8C11.5 8 8 12 8 16C8 20 11.5 24 16 24C20.5 24 24 20 24 16C24 12 20.5 8 16 8Z" stroke="white" stroke-width="2" fill="none"/>
                     <circle cx="16" cy="16" r="3" fill="white"/>
-                    <path d="M6 16H8M24 16H26" stroke="white" stroke-width="2" stroke-linecap="round"/>
-                    <path d="M10 21L11.5 19.5M20.5 12.5L22 11" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
                 </svg>
             </div>
             <span class="logo-text">Engelsiz <span class="logo-accent">TV</span></span>
@@ -38,62 +36,51 @@
 
 <!-- =================== HERO =================== -->
 <section class="hero">
-    <div class="hero-bg">
-        <div class="hero-grid"></div>
-        <div class="hero-glow"></div>
-    </div>
     <div class="hero-content">
-        <div class="hero-badge">
-            <span class="badge-dot"></span>
-            Gerçek Zamanlı Yapay Zeka
-        </div>
+        <div class="hero-badge">Gerçek Zamanlı Yapay Zeka</div>
         <h1 class="hero-title">
             Televizyon artık<br>
             <span class="title-accent">herkes için</span> konuşuyor
         </h1>
         <p class="hero-subtitle">
-            Engelsiz TV, görme engelli bireyler için canlı TV yayınlarındaki her sahneyi anlayan ve anlık sesli betimlemelere dönüştüren yapay zeka altyapısıdır.
+            Görme engelli bireyler için canlı TV yayınlarındaki her sahneyi anlayan ve saniyenin altında gecikmeyle anlık sesli betimlemelere dönüştüren yapay zeka altyapısı.
         </p>
         <div class="hero-actions">
-            <a href="demo.html" class="btn-primary">Canlı Demo İzle</a>
-            <a href="#how" class="btn-secondary">Nasıl Çalışır?</a>
+            <a href="demo.html" class="btn-primary large">Canlı Demo İzle</a>
+            <a href="#how" class="btn-secondary large">Nasıl Çalışır?</a>
         </div>
+        
         <div class="hero-stats">
             <div class="stat">
-                <span class="stat-num">~400ms</span>
-                <span class="stat-label">Gecikme</span>
+                <span class="stat-num">400ms</span>
+                <span class="stat-label">Ortalama Gecikme</span>
             </div>
-            <div class="stat-divider"></div>
             <div class="stat">
                 <span class="stat-num">7B</span>
-                <span class="stat-label">Parametre Model</span>
+                <span class="stat-label">Parametre VLM</span>
             </div>
-            <div class="stat-divider"></div>
             <div class="stat">
                 <span class="stat-num">%100</span>
-                <span class="stat-label">Yerli Türkçe Destek</span>
+                <span class="stat-label">Yerli Altyapı</span>
             </div>
         </div>
     </div>
 
-    <!-- Floating Video Preview -->
+    <!-- Clean UI Representation -->
     <div class="hero-visual">
-        <div class="tv-frame">
-            <div class="tv-screen">
-                <div class="tv-content">
-                    <div class="tv-bars">
-                        <div class="bar"></div><div class="bar"></div><div class="bar"></div>
-                        <div class="bar"></div><div class="bar"></div><div class="bar"></div>
-                        <div class="bar"></div><div class="bar"></div>
-                    </div>
-                    <div class="tv-label">CANLI YAYIN</div>
+        <div class="ui-mockup">
+            <div class="ui-header">
+                <div class="ui-dots">
+                    <div class="ui-dot"></div><div class="ui-dot"></div><div class="ui-dot"></div>
                 </div>
+                <span style="font-size: 0.75rem; color: var(--text-tertiary); font-weight: 500;">engelsiz.tv/live</span>
             </div>
-            <div class="description-bubble">
-                <div class="bubble-icon">🔊</div>
-                <div class="bubble-text">
-                    <span class="bubble-tag">Sesli Betimleme</span>
-                    <span class="bubble-content" id="bubble-text">Ekranda iki kişi masa başında oturuyor, belgeler inceleniyor...</span>
+            <div class="ui-body">
+                <div class="ui-video">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--border-dark)" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><line x1="2" y1="7" x2="7" y2="7"></line><line x1="2" y1="17" x2="7" y2="17"></line><line x1="17" y1="17" x2="22" y2="17"></line><line x1="17" y1="7" x2="22" y2="7"></line></svg>
+                </div>
+                <div class="ui-desc">
+                    🔊 "Ekranda iki kişi masa başında oturuyor, önlerindeki belgeleri inceliyorlar..."
                 </div>
             </div>
         </div>
@@ -105,58 +92,37 @@
     <div class="section-inner">
         <div class="section-header">
             <span class="section-tag">Teknoloji</span>
-            <h2>Nasıl Çalışır?</h2>
-            <p>Saniyenin altında gecikmeyle çalışan, olay güdümlü akıllı bir pipeline.</p>
+            <h2>Akıllı Pipeline Mimarisi</h2>
+            <p>Canlı yayınlara entegre edilebilen, olay güdümlü asenkron işleme mimarisi.</p>
         </div>
-        <div class="pipeline">
-            <div class="pipeline-step">
-                <div class="step-icon" style="--c:#2563eb">
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="3"/><path d="M7 12h10M7 7h10M7 17h6"/></svg>
+        <div class="pipeline-list">
+            <div class="pipeline-card">
+                <div class="step-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                 </div>
-                <div class="step-body">
-                    <h3>Video Kaynağı</h3>
-                    <p>Canlı yayın ya da mp4 dosyası frame'lere ayrılır, ses çıkarılır.</p>
-                </div>
-                <div class="step-arrow">→</div>
+                <h3>1. Video Kaynağı</h3>
+                <p>Canlı akıştan anlık frame'ler ve ses dalgaları ayrıştırılır.</p>
             </div>
-            <div class="pipeline-step">
-                <div class="step-icon" style="--c:#2563eb">
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M9 9h6M9 12h6M9 15h4"/></svg>
+            <div class="pipeline-card">
+                <div class="step-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M9 9h6M9 12h6M9 15h4"/></svg>
                 </div>
-                <div class="step-body">
-                    <h3>Silero VAD</h3>
-                    <p>Konuşma / sessizlik tespiti yapılır. Boşluklar işaretlenir.</p>
-                </div>
-                <div class="step-arrow">→</div>
+                <h3>2. VAD Analizi</h3>
+                <p>Silero ile milisaniye hassasiyetinde konuşma ve sessizlik anları tespit edilir.</p>
             </div>
-            <div class="pipeline-step">
-                <div class="step-icon" style="--c:#2563eb">
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M8.46 8.46a5 5 0 0 0 0 7.07"/></svg>
+            <div class="pipeline-card">
+                <div class="step-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
                 </div>
-                <div class="step-body">
-                    <h3>VLM Analizi</h3>
-                    <p>Qwen2.5-VL-7B modeli 3 kare analiz eder ve sahneyi betimler.</p>
-                </div>
-                <div class="step-arrow">→</div>
+                <h3>3. VLM Betimleme</h3>
+                <p>Qwen2.5-VL modeli sessizlik anlarında sahneleri analiz edip metne çevirir.</p>
             </div>
-            <div class="pipeline-step">
-                <div class="step-icon" style="--c:#2563eb">
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 18.5a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13z"/><path d="M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/><path d="M12 22v-3.5M12 5.5V2M2 12h3.5M18.5 12H22"/></svg>
+            <div class="pipeline-card">
+                <div class="step-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 18.5a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13z"/><path d="M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/></svg>
                 </div>
-                <div class="step-body">
-                    <h3>XTTS-v2 Seslendirme</h3>
-                    <p>Betimleme metni Türkçe ses sentezi ile hoparlöre yönlendirilir.</p>
-                </div>
-                <div class="step-arrow">→</div>
-            </div>
-            <div class="pipeline-step last">
-                <div class="step-icon" style="--c:#2563eb">
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg>
-                </div>
-                <div class="step-body">
-                    <h3>Mixer & Çıkış</h3>
-                    <p>Orijinal ses alçaltılır, betimleme eklenir. Kesintisiz akış.</p>
-                </div>
+                <h3>4. Dinamik Miksaj</h3>
+                <p>Oluşturulan betimleme XTTS-v2 ile sese dönüştürülüp, ducking yöntemiyle yayına entegre edilir.</p>
             </div>
         </div>
     </div>
@@ -168,27 +134,36 @@
         <div class="section-header">
             <span class="section-tag">Özellikler</span>
             <h2>Neden Engelsiz TV?</h2>
+            <p>Görme engelliler için optimize edilmiş kesintisiz bir izleme deneyimi.</p>
         </div>
         <div class="features-grid">
-            <div class="feature-card">
+            <div class="feature-item">
                 <div class="feature-icon">⚡</div>
-                <h3>Gerçek Zamanlı</h3>
-                <p>400-1500ms arası uçtan uca gecikme. Yayın boşlukları kaçırılmadan yakalanır.</p>
+                <div class="feature-content">
+                    <h3>Gerçek Zamanlı Uyum</h3>
+                    <p>Yayın boşlukları kaçırılmadan anında doldurulur. Sahne değişimleri ile senkronize ilerler.</p>
+                </div>
             </div>
-            <div class="feature-card">
+            <div class="feature-item">
                 <div class="feature-icon">🇹🇷</div>
-                <h3>Tamamen Türkçe</h3>
-                <p>Model ve TTS Türkçe için optimize edilmiş. Doğal ve akıcı betimleme üretir.</p>
+                <div class="feature-content">
+                    <h3>Tamamen Türkçe Destek</h3>
+                    <p>Hem VLM hem de TTS modelleri Türkçe dil yapısına ve tonlamasına mükemmel uyum sağlar.</p>
+                </div>
             </div>
-            <div class="feature-card">
+            <div class="feature-item">
                 <div class="feature-icon">🧠</div>
-                <h3>Bağlam Farkında</h3>
-                <p>Önceki betimlemeleri hafızasında tutar. Aynı sahneyi tekrar anlatmaz.</p>
+                <div class="feature-content">
+                    <h3>Bağlam Farkındalığı</h3>
+                    <p>Sistem önceki betimlemeleri hatırlar. Sahnede bir değişiklik olmadıkça tekrara düşmez.</p>
+                </div>
             </div>
-            <div class="feature-card">
-                <div class="feature-icon">📡</div>
-                <h3>Canlı Yayın Hazır</h3>
-                <p>HLS/RTSP akışlarına direkt bağlanabilir. Herhangi bir yayıncı altyapısıyla çalışır.</p>
+            <div class="feature-item">
+                <div class="feature-icon">🔌</div>
+                <div class="feature-content">
+                    <h3>Kolay Entegrasyon</h3>
+                    <p>Mevcut yayıncı altyapılarına API veya HLS/RTSP stream seviyesinde zahmetsizce entegre olur.</p>
+                </div>
             </div>
         </div>
     </div>
@@ -199,8 +174,8 @@
     <div class="section-inner">
         <div class="cta-box">
             <h2>Sistemi Canlı Görün</h2>
-            <p>Demo sayfamızda pipeline'ın her adımını gerçek zamanlı izleyin.</p>
-            <a href="demo.html" class="btn-primary large">Canlı Demo →</a>
+            <p>Demo sayfamızda kendi videolarınızı yükleyin ve pipeline'ın her adımını izleyin.</p>
+            <a href="demo.html" class="btn-primary large">Canlı Demoya Git</a>
         </div>
     </div>
 </section>
@@ -208,24 +183,27 @@
 <!-- =================== FOOTER =================== -->
 <footer class="footer">
     <div class="footer-inner">
-        <a href="index.html" class="nav-logo">
-            <div class="logo-icon">
-                <svg width="24" height="24" viewBox="0 0 32 32" fill="none">
-                    <rect width="32" height="32" rx="8" fill="#2563eb"/>
-                    <path d="M16 8C11.5 8 8 12 8 16C8 20 11.5 24 16 24C20.5 24 24 20 24 16C24 12 20.5 8 16 8Z" stroke="white" stroke-width="2" fill="none"/>
-                    <circle cx="16" cy="16" r="3" fill="white"/>
-                </svg>
-            </div>
-            <span class="logo-text">Engelsiz <span class="logo-accent">TV</span></span>
-        </a>
+        <div class="footer-logo">
+            <svg viewBox="0 0 32 32" fill="none">
+                <rect width="32" height="32" rx="8" fill="currentColor"/>
+                <path d="M16 8C11.5 8 8 12 8 16C8 20 11.5 24 16 24C20.5 24 24 20 24 16C24 12 20.5 8 16 8Z" stroke="white" stroke-width="2" fill="none"/>
+            </svg>
+            <span style="font-weight: 600; color: var(--text-primary);">Engelsiz TV</span>
+        </div>
         <p class="footer-copy">© 2026 Engelsiz TV. Tüm hakları saklıdır.</p>
         <div class="footer-links">
             <a href="partners.html">Paydaşlar</a>
-            <a href="demo.html">Demo</a>
+            <a href="demo.html">Canlı Demo</a>
         </div>
     </div>
 </footer>
 
-<script src="main.js"></script>
+<script>
+    window.addEventListener('scroll', () => {
+        const nav = document.getElementById('navbar');
+        if (window.scrollY > 20) nav.classList.add('scrolled');
+        else nav.classList.remove('scrolled');
+    });
+</script>
 </body>
 </html>

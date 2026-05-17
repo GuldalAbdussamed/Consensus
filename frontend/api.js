@@ -1,18 +1,8 @@
-// Eğer frontend zaten backend (8000) üzerinden servis ediliyorsa relative path kullan, 
-// yoksa (dev server vb.) hostname:8000'e git.
-const BASE = (window.location.port === '8000' || window.location.hostname.includes('8000-'))
-    ? window.location.origin 
-    : `http://${window.location.hostname}:8000`;
+const API_BASE_URL = 'http://localhost:8080';
 
 async function checkHealth() {
     try {
-        // 5 saniye timeout ekleyelim ki sonsuza kadar asılı kalmasın
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-        const response = await fetch(`${BASE}/health`, { signal: controller.signal });
-        clearTimeout(timeoutId);
-        
+        const response = await fetch(`${API_BASE_URL}/health`);
         if (!response.ok) throw new Error('Backend yanıt vermedi');
         return await response.json();
     } catch (error) {
@@ -37,10 +27,12 @@ async function uploadVideo(file, onProgress) {
 
         xhr.onload = () => {
             if (xhr.status === 200) {
-                const blob = xhr.response;
-                const jobId = xhr.getResponseHeader('X-Job-Id');
-                const procTime = xhr.getResponseHeader('X-Processing-Time');
-                resolve({ blob, jobId, procTime });
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    resolve(response);
+                } catch {
+                    reject(new Error('Sunucu geçersiz yanıt döndürdü'));
+                }
             } else if (xhr.status === 429) {
                 reject(new Error('Başka bir video işleniyor. Lütfen bekleyin.'));
             } else {
@@ -56,11 +48,28 @@ async function uploadVideo(file, onProgress) {
         xhr.onerror = () => reject(new Error('Bağlantı hatası'));
         xhr.ontimeout = () => reject(new Error('Zaman aşımı'));
 
-        xhr.open('POST', `${BASE}/test`);
-        xhr.responseType = 'blob';
-        xhr.timeout = 600000;
+        xhr.open('POST', `${API_BASE_URL}/upload`);
+        xhr.timeout = 300000; // 5 min for upload
         xhr.send(formData);
     });
+}
+
+async function pollJobStatus(jobId) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/status/${jobId}`);
+        if (!response.ok) throw new Error('Status kontrol hatası');
+        return await response.json();
+    } catch (error) {
+        console.error('Poll hatası:', error);
+        return null;
+    }
+}
+
+async function downloadJob(jobId, filename) {
+    const response = await fetch(`${API_BASE_URL}/download/${jobId}`);
+    if (!response.ok) throw new Error('İndirme hatası');
+    const blob = await response.blob();
+    downloadBlob(blob, filename);
 }
 
 function downloadBlob(blob, filename) {

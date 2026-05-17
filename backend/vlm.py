@@ -226,12 +226,12 @@ async def run(
             continue
 
         if isinstance(item, StreamEnded):
-            log.info("VLM worker: gap stream bitti (reason=%s)", getattr(item, "reason", "unknown"))
+            log.info("VLM worker: gap stream bitti")
             break
 
         gap: GapItem = item
-        log.info("VLM: Boşluk alındı [%.2f-%.2f] (%.1fs)", 
-                 gap.video_time_start, gap.video_time_end, gap.available_seconds)
+
+        # Stale gap kontrolü — wall_time çok eskiyse atla
         age = time.time() - gap.wall_time
         if age > config.MAX_AUDIO_AGE_SEC:
             log.warning("Stale GapItem atlandı (yaş=%.1fs, t=%.2f)", age, gap.video_time_center)

@@ -47,7 +47,7 @@ async def _spawn_ffmpeg_audio(video_path: str) -> asyncio.subprocess.Process:
     proc = await asyncio.create_subprocess_exec(
         *cmd,
         stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.DEVNULL,
+        stderr=asyncio.subprocess.PIPE,
     )
     return proc
 
@@ -67,7 +67,6 @@ async def _audio_decoder_task(
     samples_per_chunk = int(config.AUDIO_SAMPLE_RATE * config.AUDIO_CHUNK_MS / 1000)
     bytes_per_chunk = samples_per_chunk * bytes_per_sample
 
-    log.info("Audio decoder başlatıldı (ffmpeg)")
     chunk_idx = 0
     try:
         while True:
@@ -89,8 +88,6 @@ async def _audio_decoder_task(
                 audio_buffer.append(chunk)
 
             chunk_idx += 1
-            if chunk_idx % 100 == 0:
-                log.debug("Audio decoder: %d chunk okundu", chunk_idx)
 
     except asyncio.IncompleteReadError as e:
         # ffmpeg bitti; son artık veriyi de işle
@@ -109,19 +106,12 @@ async def _audio_decoder_task(
                 async with audio_buffer_lock:
                     audio_buffer.append(chunk)
         log.info("Audio decoder bitti, %d chunk", chunk_idx)
-    except Exception as e:
-        log.error("Audio decoder hatası: %s", e)
     finally:
-        buffer_done.set()
         try:
-            # Kısa bir süre bekle, kapanmazsa zorla öldür
-            await asyncio.wait_for(proc.wait(), timeout=2.0)
+            await proc.wait()
         except Exception:
-            try:
-                proc.kill()
-            except Exception:
-                pass
-            log.warning("ffmpeg zorla kapatıldı")
+            pass
+        buffer_done.set()
 
 
 # ============================================================
@@ -232,16 +222,15 @@ async def _frame_publisher(
             # Wall-clock'a senkronize et
             elapsed = time.time() - start_wall
             ahead = video_time - elapsed
-            if realtime:
-                if ahead > 0.005:
-                    await asyncio.sleep(ahead)
+            if realtime and ahead > 0.005:
+                await asyncio.sleep(ahead)
 
-                # Queue full ise eskiyi at (canlı sistem, geride kalmış frame değersiz)
-                if frame_queue.full():
-                    try:
-                        frame_queue.get_nowait()
-                    except asyncio.QueueEmpty:
-                        pass
+            # Queue full ise eskiyi at (canlı sistem, geride kalmış frame değersiz)
+            if frame_queue.full():
+                try:
+                    frame_queue.get_nowait()
+                except asyncio.QueueEmpty:
+                    pass
 
             await frame_queue.put(FrameItem(
                 wall_time=time.time(),

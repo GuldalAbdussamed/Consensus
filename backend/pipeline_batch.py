@@ -53,9 +53,12 @@ async def _collect_audio_chunks(
 async def _collect_tts_items(
     tts_q: asyncio.Queue,
     stop_event: asyncio.Event,
+    job_dir: Path,
 ) -> list[AudioItem]:
     """tts_q'dan tüm TTS audio item'larını topla, StreamEnded gelene kadar."""
+    import json
     items = []
+    status_file = job_dir / "status.json"
     while not stop_event.is_set():
         try:
             item = await asyncio.wait_for(tts_q.get(), timeout=1.0)
@@ -64,6 +67,29 @@ async def _collect_tts_items(
         if isinstance(item, StreamEnded):
             break
         items.append(item)
+        
+        # Write status to json for frontend
+        try:
+            descriptions = [
+                {
+                    "time": f"{int(i.video_time_start//60):02d}:{int(i.video_time_start%60):02d}", 
+                    "text": i.text
+                }
+                for i in items
+            ]
+            with open(status_file, "w", encoding="utf-8") as f:
+                json.dump({
+                    "status": "processing",
+                    "step": "pipeline",
+                    "vad": "active",
+                    "vlm": "active",
+                    "tts": "active",
+                    "mixer": "idle",
+                    "descriptions": descriptions
+                }, f, ensure_ascii=False)
+        except Exception as e:
+            log.error("Status update error: %s", e)
+            
     log.info("TTS collector: %d ses parçası toplandı", len(items))
     return items
 
@@ -185,6 +211,7 @@ async def _run_pipeline_async(
     video_path: Path,
     output_wav: Path,
     stop_event: asyncio.Event,
+    job_dir: Path,
 ):
     """Pipeline'ı batch modda çalıştır → mixed WAV üret.
 
@@ -235,7 +262,7 @@ async def _run_pipeline_async(
         name="audio_collector",
     )
     tts_collector_task = asyncio.create_task(
-        _collect_tts_items(tts_audio_q, stop_event),
+        _collect_tts_items(tts_audio_q, stop_event, job_dir),
         name="tts_collector",
     )
 
@@ -262,6 +289,21 @@ async def _run_pipeline_async(
     # Batch mix
     log.info("Batch mix başlıyor: %d audio chunk + %d TTS parçası",
              len(audio_chunks), len(tts_items))
+             
+    import json
+    status_file = job_dir / "status.json"
+    try:
+        if status_file.exists():
+            with open(status_file, "r", encoding="utf-8") as f:
+                st = json.load(f)
+        else:
+            st = {"descriptions": []}
+        st.update({"step": "mixer", "mixer": "active", "vad": "done", "vlm": "done", "tts": "done"})
+        with open(status_file, "w", encoding="utf-8") as f:
+            json.dump(st, f, ensure_ascii=False)
+    except:
+        pass
+        
     _batch_mix(audio_chunks, tts_items, output_wav)
 
 
@@ -322,8 +364,21 @@ async def process_video(
     t0 = time.time()
     log.info("Batch pipeline başlıyor: %s", input_video)
 
+    import json
+    status_file = output_dir / "status.json"
+    with open(status_file, "w", encoding="utf-8") as f:
+        json.dump({
+            "status": "processing",
+            "step": "pipeline",
+            "vad": "active",
+            "vlm": "active",
+            "tts": "idle",
+            "mixer": "idle",
+            "descriptions": []
+        }, f, ensure_ascii=False)
+
     # Pipeline çalıştır → mixed WAV üret
-    await _run_pipeline_async(input_video, mixed_wav, stop_event)
+    await _run_pipeline_async(input_video, mixed_wav, stop_event, output_dir)
 
     pipeline_dur = time.time() - t0
     log.info("Pipeline tamamlandı (%.1fs), mux başlıyor", pipeline_dur)
@@ -337,5 +392,14 @@ async def process_video(
 
     total_dur = time.time() - t0
     log.info("Toplam işlem süresi: %.1fs → %s", total_dur, output_video)
+
+    try:
+        with open(status_file, "r", encoding="utf-8") as f:
+            st = json.load(f)
+        st.update({"status": "done", "step": "done", "mixer": "done"})
+        with open(status_file, "w", encoding="utf-8") as f:
+            json.dump(st, f, ensure_ascii=False)
+    except:
+        pass
 
     return output_video

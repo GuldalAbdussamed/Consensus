@@ -11,19 +11,18 @@ Kullanım:
 """
 
 import asyncio
-import contextlib
 import logging
 import shutil
 import tempfile
 import time
 import uuid
+import json
 from pathlib import Path
 
 import uvicorn
-from fastapi import FastAPI, File, UploadFile, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, File, UploadFile, HTTPException, BackgroundTasks
 from fastapi.responses import FileResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 
 import config
 from pipeline_batch import process_video
@@ -36,34 +35,19 @@ logging.basicConfig(
 )
 log = logging.getLogger("api_server")
 
-# ── Lifespan ─────────────────────────────────────────────
-@contextlib.asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Startup
-    yield
-    # Shutdown
-    if WORK_DIR.exists():
-        try:
-            shutil.rmtree(WORK_DIR)
-            log.info("Geçici dizin temizlendi: %s", WORK_DIR)
-        except Exception as e:
-            log.warning("Temizlik hatası: %s", e)
-
 # ── FastAPI ──────────────────────────────────────────────
 app = FastAPI(
     title="Engelsiz TV API",
     description="Video yükle → sesli betimleme ekle → işlenmiş videoyu indir",
     version="1.0.0",
-    lifespan=lifespan,
 )
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=False,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["X-Job-Id", "X-Processing-Time"],
 )
 
 # ── Concurrency kontrolü ─────────────────────────────────
@@ -92,13 +76,29 @@ async def health():
     }
 
 
-@app.post("/test")
-async def test_endpoint(video: UploadFile = File(...)):
-    """Video yükle → pipeline → işlenmiş video döndür.
+async def _run_job_background(job_id: str, input_path: Path, job_dir: Path):
+    """Background task to run the pipeline."""
+    try:
+        async with _processing_lock:
+            log.info("Background pipeline başlıyor (job=%s)", job_id)
+            await process_video(input_path, job_dir)
+            log.info("Background pipeline tamamlandı (job=%s)", job_id)
+    except Exception as e:
+        log.error("Pipeline hatası (job=%s): %s", job_id, e)
+        # Write error to status
+        status_file = job_dir / "status.json"
+        try:
+            with open(status_file, "w", encoding="utf-8") as f:
+                json.dump({"status": "error", "message": str(e)}, f)
+        except:
+            pass
 
-    - multipart/form-data ile video dosyası gönderin
-    - Pipeline batch modda çalışır (gerçek zamanlı değil, tam hız)
-    - İşlenmiş video MP4 olarak döner
+
+@app.post("/upload")
+async def upload_endpoint(background_tasks: BackgroundTasks, video: UploadFile = File(...)):
+    """Video yükle ve asenkron işlem başlat.
+    
+    Dönüş: {"job_id": "..."}
     """
 
     # === Validasyon ===
@@ -147,60 +147,75 @@ async def test_endpoint(video: UploadFile = File(...)):
 
         log.info("Video kaydedildi: %.1fMB → %s", total_size / (1024*1024), input_path)
 
-        # === Pipeline çalıştır ===
-        async with _processing_lock:
-            t0 = time.time()
-            log.info("Pipeline başlıyor (job=%s)", job_id)
+        # Initial status
+        status_file = job_dir / "status.json"
+        with open(status_file, "w", encoding="utf-8") as f:
+            json.dump({"status": "queued", "step": "queued"}, f)
 
-            try:
-                output_path = await process_video(input_path, job_dir)
-            except Exception as e:
-                log.error("Pipeline hatası (job=%s): %s", job_id, e)
-                raise HTTPException(500, f"Video işleme hatası: {str(e)}")
+        # Background task
+        background_tasks.add_task(_run_job_background, job_id, input_path, job_dir)
 
-            elapsed = time.time() - t0
-            log.info("Pipeline tamamlandı (job=%s, %.1fs)", job_id, elapsed)
-
-        # === Sonucu döndür ===
-        if not output_path or not output_path.exists():
-            raise HTTPException(500, "İşlenmiş video oluşturulamadı")
-
-        return FileResponse(
-            path=str(output_path),
-            media_type="video/mp4",
-            filename=f"engelsiz_{Path(video.filename).stem}.mp4",
-            headers={
-                "X-Processing-Time": f"{elapsed:.1f}s",
-                "X-Job-Id": job_id,
-            },
-        )
+        return {"job_id": job_id, "message": "Video queued for processing"}
 
     except HTTPException:
-        # HTTP hataları olduğu gibi yükselt
         raise
     except Exception as e:
         log.error("Beklenmeyen hata (job=%s): %s", job_id, e, exc_info=True)
         raise HTTPException(500, f"Sunucu hatası: {str(e)}")
-    finally:
-        # FileResponse dosyayı gönderdikten sonra temizlik yapılmalı
-        # Not: FileResponse async olduğu için burada silmemeliyiz
-        # Temizlik için background task kullanıyoruz
-        pass
 
 
-# ── Frontend Statik Dosyalar ─────────────────────────────
-# backend/ dizinindeyiz, frontend/ bir üst dizinde
-FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
-if FRONTEND_DIR.exists():
-    app.mount("/", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="frontend")
-else:
-    log.warning("Frontend dizini bulunamadı: %s", FRONTEND_DIR)
+@app.get("/status/{job_id}")
+async def status_endpoint(job_id: str):
+    job_dir = WORK_DIR / job_id
+    status_file = job_dir / "status.json"
+    
+    if not job_dir.exists():
+        raise HTTPException(404, "Job bulunamadı")
+        
+    if not status_file.exists():
+        return {"status": "queued", "step": "queued"}
+        
+    try:
+        with open(status_file, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        return {"status": "error", "message": "Statü okunamadı"}
+
+
+@app.get("/download/{job_id}")
+async def download_endpoint(job_id: str):
+    job_dir = WORK_DIR / job_id
+    if not job_dir.exists():
+        raise HTTPException(404, "Job bulunamadı")
+        
+    # Find processed video
+    output_files = list(job_dir.glob("processed_*.mp4"))
+    if not output_files:
+        raise HTTPException(404, "İşlenmiş video henüz hazır değil veya bulunamadı")
+        
+    output_path = output_files[0]
+    return FileResponse(
+        path=str(output_path),
+        media_type="video/mp4",
+        filename=output_path.name
+    )
+
+
+@app.on_event("shutdown")
+def cleanup():
+    """Sunucu kapanırken geçici dosyaları temizle."""
+    if WORK_DIR.exists():
+        try:
+            shutil.rmtree(WORK_DIR)
+            log.info("Geçici dizin temizlendi: %s", WORK_DIR)
+        except Exception as e:
+            log.warning("Temizlik hatası: %s", e)
 
 
 if __name__ == "__main__":
     uvicorn.run(
         "api_server:app",
-        host=config.API_HOST,
-        port=config.API_PORT,
+        host="0.0.0.0",
+        port=8080,
         log_level="info",
     )
