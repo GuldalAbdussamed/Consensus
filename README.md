@@ -88,12 +88,58 @@ Terminal üzerinden bir video dosyasını doğrudan işlemek için:
 python main.py --video video_yolu.mp4
 ```
 
+README’e eklemek için en iyi yer “Kullanım Kılavuzu”ndan sonra ayrı bir bölüm olur. Aşağıya direkt koyabileceğin **hazır “Kullanım Senaryosu”** yazdım:
+
+---
+
+## Kullanım Senaryosu (End-to-End Akış)
+
+Engelsiz TV’nin tipik bir kullanım senaryosu, canlı veya önceden kaydedilmiş bir video içeriğinin gerçek zamanlı olarak erişilebilir hale getirilmesi sürecini kapsar.
+
+## Senaryo: Canlı Televizyon Yayınına Erişilebilirlik Eklenmesi
+
+Bir kullanıcı, haber kanalı izlerken sistemi aktif hale getirir:
+
+1. **Yayın Girişi**
+
+   * Kullanıcı sistem arayüzünden “Canlı Yayın Başlat” seçeneğini seçer.
+   * RTSP/HLS akışı backend pipeline’a yönlendirilir.
+
+2. **Gerçek Zamanlı Analiz**
+
+   * Video akışı frame bazında alınır.
+   * Silero VAD, konuşma olup olmadığını sürekli izler.
+   * Konuşma olmadığı anlar “betimleme fırsatı” olarak işaretlenir.
+
+3. **Sahne Anlama**
+
+   * Seçilen frame’ler Qwen2.5-VL modeline gönderilir.
+   * Model sahneyi analiz eder:
+
+     * Ortam (örneğin: stüdyo, saha, sokak)
+     * Olay (örneğin: sunucu geçiş yapıyor, grafik gösteriliyor)
+
+4. **Betimleme Üretimi**
+
+   * Model çıktısı doğal dile dönüştürülür.
+   * Örnek çıktı:
+
+     > “Sunucu haber bülteninde ekonomi gündemini sunuyor, ekranda grafikler gösteriliyor.”
+
+5. **Ses Sentezi ve Karıştırma**
+
+   * XTTS-v2 metni doğal Türkçe sese çevirir.
+   * Orijinal yayın sesi ducking ile kısılır.
+   * Betimleme sesi yayın akışına eklenir.
+
+
+
 ## Ekip Üyeleri
 
 - **Abdussamed Güldal** - Takım kaptanı
 - **Furkan Vural** - AI & Arka yüz geliştirici
 - **Samet Oran** - İş geliştirme /Qa tester
-- **Enes busi** - Marketing 
+- **Enes Bushi** - Marketing 
 - **Furkan Vural** - AI & Ön yüz geliştirici
 
 ## İş Ortakları ve Destekçiler
