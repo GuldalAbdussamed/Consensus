@@ -47,6 +47,8 @@ Sistem, olay güdümlü (event-driven) bir asenkron pipeline üzerinde çalış�
 
 ## Kurulum ve Yapılandırma
 
+> **Güncel kurulum:** GPU sunucusu gerektirmeyen, sıfır maliyetli yerel kurulum ve eski yöntemle karşılaştırması için [SIFIR_MALIYET.md](SIFIR_MALIYET.md) dosyasına bakın.
+
 ### Backend Kurulumu
 
 1. Bağımlılıkları yükleyin:

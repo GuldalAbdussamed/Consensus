@@ -25,6 +25,9 @@ env/
 *.log
 run.log
 
+# Piper ses modelleri (ilk çalıştırmada iner)
+voices/
+
 # Audio/Video test files
 *.wav
 *.mp3

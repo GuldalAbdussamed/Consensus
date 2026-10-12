@@ -1,8 +1,10 @@
 """
-tts.py — TTS worker. Mock veya XTTS-v2 HTTP modu.
+tts.py — TTS worker. Piper (yerel), XTTS-v2 HTTP veya mock modu.
 
-config.py'da TTS_URL bir HTTP endpoint. Eğer endpoint çağrılabiliyorsa
-gerçek TTS, değilse mock (sabit ton WAV).
+config.TTS_BACKEND:
+- piper: süreç içinde, CPU'da çalışır. GPU/sunucu gerektirmez (varsayılan).
+- xtts : config.TTS_URL'deki XTTS-v2 sunucusu. Endpoint çağrılamıyorsa mock'a düşer.
+- mock : sabit ton WAV.
 
 Mock mod: kelime sayısına göre yaklaşık doğru uzunlukta sinüs tonu üretir.
 Bu sayede pipeline'ın geri kalanı (mix timing, ducking) gerçek TTS olmadan
@@ -14,6 +16,7 @@ import io
 import logging
 import time
 import wave
+from pathlib import Path
 
 import httpx
 import numpy as np
@@ -44,6 +47,40 @@ def _mock_tts(text: str, sample_rate: int) -> np.ndarray:
         sig[:fade] *= np.linspace(0, 1, fade)
         sig[-fade:] *= np.linspace(1, 0, fade)
     return sig.astype(np.float32)
+
+
+# ============================================================
+# Piper — yerel TTS
+# ============================================================
+
+VOICE_DIR = Path(__file__).parent / "voices"
+
+_piper_voice = None
+
+
+def _load_piper_voice():
+    """Ses modelini yükle; diskte yoksa bir kereliğine indir (~60MB)."""
+    global _piper_voice
+    if _piper_voice is None:
+        from piper import PiperVoice
+        from piper.download_voices import download_voice
+
+        model_path = VOICE_DIR / f"{config.TTS_VOICE}.onnx"
+        if not model_path.exists():
+            log.info("Piper sesi indiriliyor: %s", config.TTS_VOICE)
+            VOICE_DIR.mkdir(exist_ok=True)
+            download_voice(config.TTS_VOICE, VOICE_DIR)
+        _piper_voice = PiperVoice.load(model_path)
+        log.info("Piper sesi hazır: %s", config.TTS_VOICE)
+    return _piper_voice
+
+
+def _piper_tts(text: str) -> tuple[np.ndarray, int]:
+    """Senkron (CPU'da ~100-700ms), executor'a atılacak."""
+    voice = _load_piper_voice()
+    chunks = list(voice.synthesize(text))
+    pcm = np.concatenate([c.audio_float_array for c in chunks])
+    return pcm, chunks[0].sample_rate
 
 
 # ============================================================
@@ -132,12 +169,20 @@ async def run(
 ):
     log.info("TTS worker başlıyor (force_mock=%s, realtime=%s)", force_mock, realtime)
 
+    backend = "mock" if force_mock else config.TTS_BACKEND
+    loop = asyncio.get_running_loop()
+
     async with httpx.AsyncClient() as client:
-        if force_mock:
-            use_real = False
-        else:
+        if backend == "piper":
+            try:
+                await loop.run_in_executor(None, _load_piper_voice)
+            except Exception as e:
+                log.error("Piper yüklenemedi (%s), MOCK moduna düşülüyor", e)
+                backend = "mock"
+        elif backend == "xtts":
             t_probe = time.time()
-            use_real = await _probe_real_tts(client)
+            if not await _probe_real_tts(client):
+                backend = "mock"
             probe_dur = time.time() - t_probe
             log.info("TTS probe %.1fs sürdü", probe_dur)
 
@@ -157,9 +202,7 @@ async def run(
                 if flushed:
                     log.info("Probe sırasında biriken %d stale desc temizlendi", flushed)
 
-        log.info("TTS modu: %s", "GERÇEK (XTTS-v2)" if use_real else "MOCK (sinüs)")
-
-        loop = asyncio.get_running_loop()
+        log.info("TTS modu: %s", backend)
 
         while not stop_event.is_set():
             try:
@@ -182,7 +225,9 @@ async def run(
 
             t0 = time.time()
             try:
-                if use_real:
+                if backend == "piper":
+                    pcm, sr = await loop.run_in_executor(None, _piper_tts, desc.text)
+                elif backend == "xtts":
                     pcm, sr = await _real_tts(client, desc.text)
                 else:
                     # Mock executor'a atmaya gerek yok, hızlı CPU işi

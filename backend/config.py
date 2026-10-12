@@ -6,19 +6,36 @@ Hackathon temposunda eşikleri sürekli oynayacağız. Burası tek doğruluk kay
 
 import os
 import logging
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+# backend/.env — shell'de export edilmiş değişkenler önceliklidir
+load_dotenv(Path(__file__).parent / ".env")
 
 # ============================================================
 # Servis URL'leri
 # ============================================================
 
-# vLLM (Qwen2.5-VL) sunucusu
-VLLM_URL = os.getenv("VLLM_URL", "http://localhost:8000/v1")
-VLLM_MODEL = os.getenv("VLLM_MODEL", "Qwen/Qwen2.5-VL-7B-Instruct-AWQ")
+# VLM: OpenAI-uyumlu herhangi bir endpoint (Ollama, vLLM, ücretsiz bulut API'leri).
+# Varsayılan = yerel Ollama, GPU sunucusu gerektirmez.
+VLLM_URL = os.getenv("VLLM_URL", "http://localhost:11434/v1")
+VLLM_MODEL = os.getenv("VLLM_MODEL", "gemma3:4b")
 VLLM_API_KEY = os.getenv("VLLM_API_KEY", "dummy")
 
-# XTTS-v2 sunucusu
+# TTS motoru:
+#   piper = süreç içinde, CPU'da, offline (varsayılan)
+#   xtts  = TTS_URL'deki XTTS-v2 sunucusu (GPU)
+#   mock  = sinüs tonu
+TTS_BACKEND = os.getenv("TTS_BACKEND", "piper")
+if TTS_BACKEND not in ("piper", "xtts", "mock"):
+    raise ValueError(f"Bilinmeyen TTS_BACKEND: {TTS_BACKEND!r} (piper | xtts | mock)")
+# Piper ses modeli — ilk kullanımda backend/voices/ altına iner
+TTS_VOICE = os.getenv("TTS_VOICE", "tr_TR-dfki-medium")
+
+# XTTS-v2 sunucusu (sadece TTS_BACKEND=xtts)
 TTS_URL = os.getenv("TTS_URL", "http://localhost:8020")
-TTS_LANGUAGE = "tr"
+TTS_LANGUAGE = os.getenv("TTS_LANGUAGE", "tr")
 TTS_SPEAKER_WAV = None  # None = default ses; ileride ses klonlama için referans WAV
 
 # ============================================================
@@ -85,8 +102,8 @@ HSV_HIST_BINS = (50, 60)
 # ============================================================
 
 # Kelime bütçesi: boşluğa kaç kelime sığar
-# TTS Türkçe ~3 kelime/saniye
-WORDS_PER_SECOND = 3.0
+# Piper Türkçe ölçülen ~2.1 kelime/saniye (XTTS-v2 için 3.0 yap)
+WORDS_PER_SECOND = float(os.getenv("WORDS_PER_SECOND", "2.1"))
 MIN_WORD_BUDGET = 4
 MAX_WORD_BUDGET = 15
 
@@ -96,9 +113,13 @@ TOKENS_PER_WORD = 3
 # Bağlam: son N betimleme prompt'a geri beslenir ("farklı bir şey söyle")
 CONTEXT_WINDOW = 2
 
-# VLM çağrısı timeout
-VLM_TIMEOUT_SEC = 5.0
+# VLM çağrısı timeout. L40S'te 5sn yetiyordu; yerel model / ücretsiz API daha yavaş.
+VLM_TIMEOUT_SEC = float(os.getenv("VLM_TIMEOUT_SEC", "60"))
 VLM_TEMPERATURE = 0.2
+
+# Aynı anda kaç VLM çağrısı. Yerel model istekleri sırayla işler (fazlası kuyrukta
+# timeout yer), ücretsiz API'lerde de dakika limiti var — GPU sunucusunda 5 yap.
+VLM_MAX_CONCURRENCY = int(os.getenv("VLM_MAX_CONCURRENCY", "1"))
 
 # Jaccard tekrar filtresi eşiği (0-1)
 # İki cümlenin kelime setleri bu oranda kesişiyorsa "tekrar" say
@@ -163,7 +184,7 @@ MAX_AUDIO_AGE_SEC = 5.0
 # Logging
 # ============================================================
 
-LOG_LEVEL = "INFO"
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 LOG_FORMAT = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 LOG_DATEFMT = "%H:%M:%S"
 

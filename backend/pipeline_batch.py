@@ -72,7 +72,10 @@ async def _collect_tts_items(
         try:
             descriptions = [
                 {
-                    "time": f"{int(i.video_time_start//60):02d}:{int(i.video_time_start%60):02d}", 
+                    "time": f"{int(i.video_time_start//60):02d}:{int(i.video_time_start%60):02d}",
+                    # Frontend altyazı senkronu saniye cinsinden bunları okur
+                    "start_time": i.video_time_start,
+                    "end_time": i.video_time_start + len(i.pcm) / i.sample_rate,
                     "text": i.text
                 }
                 for i in items

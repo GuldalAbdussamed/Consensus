@@ -222,7 +222,7 @@ async def run(
     client = AsyncOpenAI(base_url=config.VLLM_URL, api_key=config.VLLM_API_KEY)
     
     # Paralel VLM çağrısı için semaphore
-    semaphore = asyncio.Semaphore(5)
+    semaphore = asyncio.Semaphore(config.VLM_MAX_CONCURRENCY)
 
     async def process_item(gap: GapItem):
         async with semaphore:

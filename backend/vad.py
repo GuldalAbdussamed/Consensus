@@ -283,9 +283,14 @@ async def run(
     log.info("VAD worker başlıyor (lookahead=%.1fs, realtime=%s)", 
              config.AUDIO_LOOKAHEAD_SEC, realtime)
 
-    # Batch modda tüm videoyu hafızada tutabiliriz (max 1 saatlik video için ~3600sn)
-    history_sec = 3600.0 if not realtime else 300.0
-    frame_hist = FrameHistory(max_age_sec=history_sec)
+    # Boşluk merkezi her zaman VAD penceresinin içinde; daha eski frame gerekmez.
+    # (Ham frame'ler büyük: 720p'de saniyesi ~70MB.)
+    frame_hist = FrameHistory(max_age_sec=2 * config.VAD_BUFFER_SEC)
+
+    audio_buf = AudioRingBuffer(
+        max_sec=config.VAD_BUFFER_SEC,
+        sample_rate=config.AUDIO_SAMPLE_RATE,
+    )
 
     # Daha önce GapItem üretilmiş boşlukları tekrar üretme
     # (audio buffer kayarken aynı boşluğu yeniden görebiliriz)
@@ -293,6 +298,8 @@ async def run(
 
     audio_done = False
     frame_done = False
+    audio_time = 0.0  # tüketilen son audio chunk'ın video_time'ı
+    frame_time = 0.0  # tüketilen son frame'in video_time'ı
     last_vad_at = 0.0
     chunks_since_vad = 0
     # Batch modda chunk sayacıyla VAD tetikle (0.5s = 5 chunk @ 100ms)
@@ -304,6 +311,12 @@ async def run(
         # === Audio queue'dan al (birikmiş her şeyi çek) ===
         any_audio = False
         while True:
+            # Batch modda audio tam hızda akar, frame'ler geriden gelir. Realtime'daki
+            # gibi frame'lerin en fazla look-ahead kadar önüne geç; yoksa boşluk
+            # bulunduğunda frame'i henüz gelmemiş olur ve boşluk kaybolur.
+            if (not realtime and not frame_done
+                    and audio_time > frame_time + config.AUDIO_LOOKAHEAD_SEC):
+                break
             try:
                 audio_item = audio_q_lookahead.get_nowait()
                 any_audio = True
@@ -312,6 +325,7 @@ async def run(
                     log.info("Audio lookahead bitti")
                 else:
                     await audio_buf.append(audio_item)
+                    audio_time = audio_item.video_time_end
                     chunks_since_vad += 1
             except asyncio.QueueEmpty:
                 break
@@ -327,6 +341,7 @@ async def run(
                     log.info("Frame stream bitti")
                 else:
                     await frame_hist.add(f_item)
+                    frame_time = f_item.video_time
             except asyncio.QueueEmpty:
                 break
 
