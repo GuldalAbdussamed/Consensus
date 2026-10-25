@@ -119,27 +119,27 @@ def build_prompt(gap: GapItem) -> str:
         "Şu an arkaplanda konuşma YOK — bu yüzden 'konuşuyor' veya 'konuşuyorlar' "
         "DEMEYECEKSİN. Bu yasak.\n"
         "Sana aynı sahnenin ardışık 3 karesi veriliyor.\n\n"
+        "YALNIZCA karelerde gerçekten gördüğünü söyle, hiçbir şey UYDURMA. "
+        "Karede insan yoksa insandan bahsetme. Kare bir yazı, grafik, logo ya da "
+        "ekran görüntüsüyse onu söyle (ne yazıyor, ne gösteriyor).\n\n"
         "Şu sırayla bak ve EN BELİRGİN OLANI söyle:\n"
         "  1. AKSİYON varsa: kim ne yapıyor? (yürüyor, oturuyor, bakıyor, alıyor...)\n"
-        "  2. Aksiyon yoksa SAHNEYİ tanıt: nasıl bir mekan, kim var, nerede duruyor.\n"
-        "  3. Belirgin GÖRSEL DETAY: kıyafet, nesne, ortam.\n\n"
+        "  2. Aksiyon yoksa SAHNEYİ tanıt: nasıl bir mekan ya da görüntü, içinde ne var.\n"
+        "  3. Belirgin GÖRSEL DETAY: kıyafet, nesne, ortam, ekrandaki yazı.\n\n"
         "Kurallar:\n"
         f"- TEK cümle, en fazla {budget} kelime.\n"
         "- 'Bu karede', 'görüyoruz', 'sahnede' diye BAŞLAMA.\n"
         "- Türkçe gramer doğru olsun. ÖZNE-YÜKLEM uyumlu: "
-        "'kadın oturuyor' (kadını oturuyor DEĞİL), 'iki adam masada oturuyor'.\n"
+        "'kadın oturuyor' (kadını oturuyor DEĞİL).\n"
         "- 'konuşuyor', 'konuşuyorlar', 'konuştular' kelimeleri YASAK.\n"
-        "- Emin olmadığın detayları (isim, marka, mikrofon vb.) söyleme.\n\n"
-        "İyi örnekler:\n"
-        "  'Üç kişi masanın etrafında oturuyor.'\n"
-        "  'Kadın elindeki kağıdı inceliyor.'\n"
-        "  'Genç adam dışarı çıkıyor.'\n"
+        "- Emin olmadığın detayları (isim, marka, mikrofon vb.) söyleme.\n"
+        # Örnek cümle yok: küçük modeller (gemma3:4b, qwen2.5vl:7b) örneği aynen kopyalıyor
     )
 
     if gap.is_first:
         task = (
-            "\nBU İLK BETİMLEME. Sahneyi tanıt: ne tür mekan, kaç kişi var, "
-            "kim nerede, en belirgin görsel ne?\n"
+            "\nBU İLK BETİMLEME. Sahneyi tanıt: ne tür bir mekan ya da görüntü, "
+            "içinde kim ya da ne var, en belirgin görsel ne?\n"
             f"\nGörev: En fazla {budget} kelimeyle sahneyi tanıt."
         )
     elif gap.context:
@@ -147,7 +147,8 @@ def build_prompt(gap: GapItem) -> str:
         task = (
             f"\nSon söylediklerin:\n{ctx}\n"
             "BU KEZ FARKLI BİR ŞEY söyle. Önceden bahsetmediğin bir kişiye, "
-            "nesneye, harekete veya detaya odaklan. Aynı kelimeleri tekrar kullanma.\n"
+            "nesneye, harekete veya detaya odaklan. Aynı kelimeleri tekrar kullanma. "
+            "Karede olmayan bir şey ekleme.\n"
             f"\nGörev: En fazla {budget} kelimeyle sahnedeki YENİ bir şeyi söyle."
         )
     else:
@@ -204,6 +205,33 @@ async def _call_vlm(client: AsyncOpenAI, gap: GapItem) -> tuple[str, str, float]
     raw = response.choices[0].message.content or ""
     cleaned = clean_description(raw)
     return cleaned, raw, latency_ms
+
+
+async def shorten(client: AsyncOpenAI, text: str, max_words: int) -> str:
+    """Betimlemeyi en fazla max_words kelimeye kısalttır (görüntü gitmez, hızlı).
+
+    TTS sesi boşluğa en yüksek hızda bile sığmadığında çağrılır. Olmazsa "" döner.
+    """
+    prompt = (
+        "Aşağıdaki sahne betimlemesini anlamını koruyarak "
+        f"en fazla {max_words} kelimeye kısalt. Kim ne yapıyor bilgisini koru, "
+        "yeni bilgi ekleme. Yalnızca kısaltılmış cümleyi yaz.\n\n"
+        f"Betimleme: {text}"
+    )
+    try:
+        response = await asyncio.wait_for(
+            client.chat.completions.create(
+                model=config.VLLM_MODEL,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=max_words * config.TOKENS_PER_WORD,
+                temperature=config.VLM_TEMPERATURE,
+            ),
+            timeout=config.VLM_TIMEOUT_SEC,
+        )
+    except Exception as e:
+        log.error("Kısaltma hata: %s", e)
+        return ""
+    return clean_description(response.choices[0].message.content or "")
 
 
 # ============================================================

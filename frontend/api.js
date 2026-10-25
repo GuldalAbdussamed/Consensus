@@ -1,4 +1,7 @@
-const API_BASE_URL = 'http://localhost:8080';
+// 8080 doluysa: demo.html?api=http://localhost:8081 — adres tarayıcıda saklanır
+const apiParam = new URLSearchParams(window.location.search).get('api');
+if (apiParam) localStorage.setItem('engelsiz-api', apiParam);
+const API_BASE_URL = localStorage.getItem('engelsiz-api') || 'http://localhost:8080';
 
 async function checkHealth() {
     try {

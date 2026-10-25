@@ -132,6 +132,10 @@ JACCARD_REPEAT_THRESHOLD = 0.35
 TTS_TIMEOUT_SEC = 30.0
 TTS_SAMPLE_RATE = 24000  # XTTS-v2 default
 
+# Ses boşluktan uzunsa konuşma en fazla bu kat hızlandırılır (yalnızca Piper);
+# o da yetmezse modelden daha kısa cümle istenir. 1.0 = hızlandırma kapalı.
+TTS_MAX_SPEED = float(os.getenv("TTS_MAX_SPEED", "1.6"))
+
 # ============================================================
 # Mixer (ducking + crossfade)
 # ============================================================

@@ -9,6 +9,9 @@ config.TTS_BACKEND:
 Mock mod: kelime sayısına göre yaklaşık doğru uzunlukta sinüs tonu üretir.
 Bu sayede pipeline'ın geri kalanı (mix timing, ducking) gerçek TTS olmadan
 test edilebilir.
+
+Üretilen ses boşluktan uzunsa sığdırılır: Piper'da konuşma hızlandırılır
+(config.TTS_MAX_SPEED'e kadar), yetmezse modelden daha kısa cümle istenir.
 """
 
 import asyncio
@@ -20,8 +23,10 @@ from pathlib import Path
 
 import httpx
 import numpy as np
+from openai import AsyncOpenAI
 
 import config
+import vlm
 from messages import DescriptionItem, AudioItem, StreamEnded
 
 log = logging.getLogger("tts")
@@ -75,10 +80,14 @@ def _load_piper_voice():
     return _piper_voice
 
 
-def _piper_tts(text: str) -> tuple[np.ndarray, int]:
-    """Senkron (CPU'da ~100-700ms), executor'a atılacak."""
+def _piper_tts(text: str, rate: float = 1.0) -> tuple[np.ndarray, int]:
+    """Senkron (CPU'da ~100-700ms), executor'a atılacak. rate > 1 konuşmayı hızlandırır."""
     voice = _load_piper_voice()
-    chunks = list(voice.synthesize(text))
+    syn_config = None
+    if rate != 1.0:
+        from piper import SynthesisConfig
+        syn_config = SynthesisConfig(length_scale=voice.config.length_scale / rate)
+    chunks = list(voice.synthesize(text, syn_config=syn_config))
     pcm = np.concatenate([c.audio_float_array for c in chunks])
     return pcm, chunks[0].sample_rate
 
@@ -125,6 +134,58 @@ async def _real_tts(client: httpx.AsyncClient, text: str) -> tuple[np.ndarray, i
         pcm = pcm.reshape(-1, 2).mean(axis=1)
 
     return pcm, sr
+
+
+# ============================================================
+# Boşluğa sığdırma — önce hızlandır, yetmezse modele kısalttır
+# ============================================================
+
+async def _speed_to_fit(synth, text: str, pcm: np.ndarray, sr: int,
+                        limit_sec: float) -> tuple[np.ndarray, int]:
+    """Konuşmayı limit_sec'e sığacak kadar, en fazla TTS_MAX_SPEED kat hızlandır."""
+    natural = len(pcm) / sr
+    target = max(limit_sec, natural / config.TTS_MAX_SPEED)
+    dur, rate = natural, 1.0
+    # Piper'da süre hız ayarıyla tam orantılı kısalmıyor (duraklamalar sabit kalıyor)
+    # ve aynı cümle her seferinde biraz farklı sürüyor; sığana kadar birkaç kez dene.
+    for _ in range(4):
+        if dur <= target:
+            break
+        rate = min(rate * (dur / target) ** 1.4 * 1.02, 2 * config.TTS_MAX_SPEED)
+        pcm, sr = await synth(text, rate)
+        dur = len(pcm) / sr
+    return pcm, sr
+
+
+async def _fit_to_gap(synth, llm: AsyncOpenAI, can_speed: bool, text: str,
+                      pcm: np.ndarray, sr: int,
+                      limit_sec: float) -> tuple[str, np.ndarray, int]:
+    """Ses boşluktan uzunsa sığdır. (text, pcm, sr) döner; text kısalmış olabilir."""
+    natural = len(pcm) / sr
+    if natural <= limit_sec:
+        return text, pcm, sr
+
+    max_speed = config.TTS_MAX_SPEED if can_speed else 1.0
+
+    # En yüksek hızda da sığmayacaksa önce modelden sığacak uzunlukta cümle iste
+    if natural / max_speed > limit_sec:
+        n_words = len(text.split())
+        max_words = max(config.MIN_WORD_BUDGET,
+                        int(n_words * limit_sec * max_speed / natural))
+        shorter = await vlm.shorten(llm, text, max_words) if max_words < n_words else ""
+        if shorter and len(shorter.split()) < n_words:
+            log.info("Sığdırma: kısaltıldı (%d → %d kelime): %s",
+                     n_words, len(shorter.split()), shorter)
+            text = shorter
+            pcm, sr = await synth(text)
+            natural = len(pcm) / sr
+
+    if max_speed > 1.0 and natural > limit_sec:
+        pcm, sr = await _speed_to_fit(synth, text, pcm, sr, limit_sec)
+        dur = len(pcm) / sr
+        log.info("Sığdırma: %.1fs → %.1fs (%.2fx hız, boşluk %.1fs)",
+                 natural, dur, natural / dur, limit_sec)
+    return text, pcm, sr
 
 
 # ============================================================
@@ -204,6 +265,16 @@ async def run(
 
         log.info("TTS modu: %s", backend)
 
+        llm = AsyncOpenAI(base_url=config.VLLM_URL, api_key=config.VLLM_API_KEY)
+
+        async def synth(text: str, rate: float = 1.0) -> tuple[np.ndarray, int]:
+            if backend == "piper":
+                return await loop.run_in_executor(None, _piper_tts, text, rate)
+            if backend == "xtts":
+                return await _real_tts(client, text)
+            # Mock executor'a atmaya gerek yok, hızlı CPU işi
+            return _mock_tts(text, config.TTS_SAMPLE_RATE), config.TTS_SAMPLE_RATE
+
         while not stop_event.is_set():
             try:
                 item = await asyncio.wait_for(desc_queue.get(), timeout=1.0)
@@ -225,19 +296,17 @@ async def run(
 
             t0 = time.time()
             try:
-                if backend == "piper":
-                    pcm, sr = await loop.run_in_executor(None, _piper_tts, desc.text)
-                elif backend == "xtts":
-                    pcm, sr = await _real_tts(client, desc.text)
-                else:
-                    # Mock executor'a atmaya gerek yok, hızlı CPU işi
-                    pcm = _mock_tts(desc.text, config.TTS_SAMPLE_RATE)
-                    sr = config.TTS_SAMPLE_RATE
+                text = desc.text
+                pcm, sr = await synth(text)
+                if backend != "mock":
+                    text, pcm, sr = await _fit_to_gap(
+                        synth, llm, backend == "piper", text, pcm, sr,
+                        desc.available_seconds)
 
                 latency_ms = (time.time() - t0) * 1000
                 duration = len(pcm) / sr
                 log.info("TTS (%.0fms, %.1fs ses): %s",
-                         latency_ms, duration, desc.text[:60])
+                         latency_ms, duration, text[:60])
 
                 # TTS bitiş kontrolü: ses boşluğa sığacak mı?
                 if duration > desc.available_seconds + 0.5:
@@ -254,7 +323,7 @@ async def run(
 
                 await audio_queue.put(AudioItem(
                     video_time_start=desc.video_time_start,
-                    text=desc.text,
+                    text=text,
                     pcm=pcm,
                     sample_rate=sr,
                     wall_time=time.time(),
